@@ -79,6 +79,23 @@ function loadCanvasImage(source: string) {
   })
 }
 
+function getCoverCrop(imageWidth: number, imageHeight: number, targetWidth: number, targetHeight: number) {
+  const imageRatio = imageWidth / imageHeight
+  const targetRatio = targetWidth / targetHeight
+
+  if (imageRatio > targetRatio) {
+    const cropHeight = imageHeight
+    const cropWidth = cropHeight * targetRatio
+    const sx = (imageWidth - cropWidth) / 2
+    return { sx, sy: 0, sw: cropWidth, sh: cropHeight }
+  }
+
+  const cropWidth = imageWidth
+  const cropHeight = cropWidth / targetRatio
+  const sy = (imageHeight - cropHeight) / 2
+  return { sx: 0, sy, sw: cropWidth, sh: cropHeight }
+}
+
 function buildPolaroid(source: string, caption: string) {
   return new Promise<string>((resolve, reject) => {
     const image = new Image()
@@ -108,15 +125,13 @@ function buildPolaroid(source: string, caption: string) {
       const frameY = 120
       const frameWidth = 960
       const frameHeight = 1080
-      const squareSize = Math.min(frameWidth, frameHeight)
-      const sx = (image.width - squareSize) / 2
-      const sy = (image.height - squareSize) / 2
+      const crop = getCoverCrop(image.width, image.height, frameWidth, frameHeight)
 
       context.save()
       context.beginPath()
       context.rect(frameX, frameY, frameWidth, frameHeight)
       context.clip()
-      context.drawImage(image, sx, sy, squareSize, squareSize, frameX, frameY, frameWidth, frameHeight)
+      context.drawImage(image, crop.sx, crop.sy, crop.sw, crop.sh, frameX, frameY, frameWidth, frameHeight)
       context.restore()
 
       context.fillStyle = '#0f2348'
@@ -168,15 +183,13 @@ async function buildPhotoStrip(sources: string[], caption: string) {
 
   images.forEach((image, index) => {
     const frameY = 128 + index * 560
-    const squareSize = Math.min(image.width, image.height)
-    const sx = (image.width - squareSize) / 2
-    const sy = (image.height - squareSize) / 2
+    const crop = getCoverCrop(image.width, image.height, frameWidth, frameHeight)
 
     context.save()
     context.fillStyle = '#fdf8f1'
     context.fillRect(frameX - 18, frameY - 18, frameWidth + 36, frameHeight + 36)
     context.filter = filters[index] || 'none'
-    context.drawImage(image, sx, sy, squareSize, squareSize, frameX, frameY, frameWidth, frameHeight)
+    context.drawImage(image, crop.sx, crop.sy, crop.sw, crop.sh, frameX, frameY, frameWidth, frameHeight)
     context.restore()
   })
 
