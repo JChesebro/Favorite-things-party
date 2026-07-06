@@ -50,10 +50,20 @@ type InviteRecord = {
 type InviteDraft = Omit<InviteRecord, 'id' | 'code' | 'updatedAt'>
 type ViewMode = 'guest' | 'host' | 'split'
 type PhotoStyle = 'polaroid' | 'strip'
+type FrameAdjustment = {
+  zoom: number
+  offsetX: number
+  offsetY: number
+}
 
 const ownedGalleryIdsStorageKey = 'glacier-owned-gallery-ids'
 const captionContestEntriesStorageKey = 'glacier-caption-contest-entries'
 const captionContestVotesStorageKey = 'glacier-caption-contest-votes'
+const defaultFrameAdjustment: FrameAdjustment = {
+  zoom: 1,
+  offsetX: 0,
+  offsetY: 0,
+}
 
 const emptyDraft: InviteDraft = {
   name: '',
@@ -96,7 +106,32 @@ function getCoverCrop(imageWidth: number, imageHeight: number, targetWidth: numb
   return { sx: 0, sy, sw: cropWidth, sh: cropHeight }
 }
 
-function buildPolaroid(source: string, caption: string) {
+function getAdjustedCrop(
+  imageWidth: number,
+  imageHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+  adjustment: FrameAdjustment,
+) {
+  const base = getCoverCrop(imageWidth, imageHeight, targetWidth, targetHeight)
+  const zoom = Math.max(1, adjustment.zoom)
+
+  const sw = base.sw / zoom
+  const sh = base.sh / zoom
+
+  const maxOffsetX = (base.sw - sw) / 2
+  const maxOffsetY = (base.sh - sh) / 2
+
+  const nextSx = base.sx + maxOffsetX + (adjustment.offsetX / 100) * maxOffsetX
+  const nextSy = base.sy + maxOffsetY + (adjustment.offsetY / 100) * maxOffsetY
+
+  const sx = Math.min(Math.max(nextSx, base.sx), base.sx + base.sw - sw)
+  const sy = Math.min(Math.max(nextSy, base.sy), base.sy + base.sh - sh)
+
+  return { sx, sy, sw, sh }
+}
+
+function buildPolaroid(source: string, caption: string, adjustment: FrameAdjustment = defaultFrameAdjustment) {
   return new Promise<string>((resolve, reject) => {
     const image = new Image()
     image.onload = () => {
@@ -125,7 +160,7 @@ function buildPolaroid(source: string, caption: string) {
       const frameY = 120
       const frameWidth = 960
       const frameHeight = 1080
-      const crop = getCoverCrop(image.width, image.height, frameWidth, frameHeight)
+      const crop = getAdjustedCrop(image.width, image.height, frameWidth, frameHeight, adjustment)
 
       context.save()
       context.beginPath()
@@ -153,7 +188,7 @@ function buildPolaroid(source: string, caption: string) {
   })
 }
 
-async function buildPhotoStrip(sources: string[], caption: string) {
+async function buildPhotoStrip(sources: string[], caption: string, adjustments: FrameAdjustment[]) {
   const frameSources = sources.slice(0, 3)
   if (frameSources.length !== 3) {
     throw new Error('Photo strip needs exactly 3 photos.')
@@ -183,7 +218,13 @@ async function buildPhotoStrip(sources: string[], caption: string) {
 
   images.forEach((image, index) => {
     const frameY = 128 + index * 560
-    const crop = getCoverCrop(image.width, image.height, frameWidth, frameHeight)
+    const crop = getAdjustedCrop(
+      image.width,
+      image.height,
+      frameWidth,
+      frameHeight,
+      adjustments[index] || defaultFrameAdjustment,
+    )
 
     context.save()
     context.fillStyle = '#fdf8f1'
@@ -236,7 +277,11 @@ export default function App() {
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraError, setCameraError] = useState('')
   const [capturedSrc, setCapturedSrc] = useState('')
+  const [polaroidSource, setPolaroidSource] = useState('')
   const [stripSources, setStripSources] = useState<string[]>([])
+  const [polaroidAdjustment, setPolaroidAdjustment] = useState<FrameAdjustment>(defaultFrameAdjustment)
+  const [stripAdjustments, setStripAdjustments] = useState<FrameAdjustment[]>([])
+  const [activeStripFrame, setActiveStripFrame] = useState(0)
   const [inviteDraft, setInviteDraft] = useState<InviteDraft>(emptyDraft)
   const [inviteMessage, setInviteMessage] = useState('')
   const [savedInvites, setSavedInvites] = useState<InviteRecord[]>([])
@@ -324,10 +369,39 @@ export default function App() {
   useEffect(() => {
     if (photoStyle === 'polaroid') {
       setStripSources([])
+      setStripAdjustments([])
+      setActiveStripFrame(0)
     } else {
       setCapturedSrc('')
     }
   }, [photoStyle])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function buildPolaroidPreview() {
+      if (photoStyle !== 'polaroid') return
+      if (!polaroidSource) {
+        setCapturedSrc('')
+        return
+      }
+
+      try {
+        const rendered = await buildPolaroid(polaroidSource, galleryCaption, polaroidAdjustment)
+        if (cancelled) return
+        setCapturedSrc(rendered)
+      } catch {
+        if (cancelled) return
+        setCapturedSrc('')
+      }
+    }
+
+    buildPolaroidPreview()
+
+    return () => {
+      cancelled = true
+    }
+  }, [photoStyle, polaroidSource, galleryCaption, polaroidAdjustment])
 
   useEffect(() => {
     let cancelled = false
@@ -340,7 +414,7 @@ export default function App() {
       }
 
       try {
-        const rendered = await buildPhotoStrip(stripSources, galleryCaption)
+        const rendered = await buildPhotoStrip(stripSources, galleryCaption, stripAdjustments)
         if (cancelled) return
         setCapturedSrc(rendered)
       } catch {
@@ -354,7 +428,7 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [photoStyle, stripSources, galleryCaption])
+  }, [photoStyle, stripSources, galleryCaption, stripAdjustments])
 
   useEffect(() => {
     let cancelled = false
@@ -424,6 +498,30 @@ export default function App() {
       setGalleryMessage(`Added frame ${next.length} of 3 for the strip.`)
       return next
     })
+    setStripAdjustments((current) => {
+      if (current.length >= 3) return current
+      return [...current, { ...defaultFrameAdjustment }]
+    })
+  }
+
+  function updatePolaroidAdjustment(field: keyof FrameAdjustment, value: number) {
+    setPolaroidAdjustment((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  function updateStripAdjustment(field: keyof FrameAdjustment, value: number) {
+    setStripAdjustments((current) =>
+      current.map((adjustment, index) =>
+        index === activeStripFrame
+          ? {
+              ...adjustment,
+              [field]: value,
+            }
+          : adjustment,
+      ),
+    )
   }
 
   async function capturePhoto() {
@@ -444,12 +542,14 @@ export default function App() {
       return
     }
 
-    const nextImage = await buildPolaroid(src, galleryCaption)
-    setCapturedSrc(nextImage)
+    setPolaroidSource(src)
+    setPolaroidAdjustment({ ...defaultFrameAdjustment })
   }
 
   function clearStripFrames() {
     setStripSources([])
+    setStripAdjustments([])
+    setActiveStripFrame(0)
     setCapturedSrc('')
     setGalleryMessage('Cleared strip frames. Add 3 new photos.')
   }
@@ -1104,14 +1204,100 @@ export default function App() {
                 if (photoStyle === 'strip') {
                   addStripFrame(src)
                 } else {
-                  const nextImage = await buildPolaroid(src, galleryCaption)
-                  setCapturedSrc(nextImage)
+                  setPolaroidSource(src)
+                  setPolaroidAdjustment({ ...defaultFrameAdjustment })
                 }
               }
               reader.readAsDataURL(file)
               event.currentTarget.value = ''
             }}
           />
+          {photoStyle === 'polaroid' && polaroidSource ? (
+            <div className="crop-controls">
+              <label>
+                Zoom
+                <input
+                  type="range"
+                  min={1}
+                  max={2.5}
+                  step={0.05}
+                  value={polaroidAdjustment.zoom}
+                  onChange={(event) => updatePolaroidAdjustment('zoom', Number(event.target.value))}
+                />
+              </label>
+              <label>
+                Move left-right
+                <input
+                  type="range"
+                  min={-100}
+                  max={100}
+                  step={1}
+                  value={polaroidAdjustment.offsetX}
+                  onChange={(event) => updatePolaroidAdjustment('offsetX', Number(event.target.value))}
+                />
+              </label>
+              <label>
+                Move up-down
+                <input
+                  type="range"
+                  min={-100}
+                  max={100}
+                  step={1}
+                  value={polaroidAdjustment.offsetY}
+                  onChange={(event) => updatePolaroidAdjustment('offsetY', Number(event.target.value))}
+                />
+              </label>
+            </div>
+          ) : null}
+          {photoStyle === 'strip' && stripSources.length ? (
+            <div className="crop-controls">
+              <div className="strip-frame-pills">
+                {stripSources.map((_, index) => (
+                  <button
+                    key={`frame-${index}`}
+                    type="button"
+                    className={index === activeStripFrame ? 'pill-active' : 'secondary-button'}
+                    onClick={() => setActiveStripFrame(index)}
+                  >
+                    Frame {index + 1}
+                  </button>
+                ))}
+              </div>
+              <label>
+                Zoom frame {activeStripFrame + 1}
+                <input
+                  type="range"
+                  min={1}
+                  max={2.5}
+                  step={0.05}
+                  value={stripAdjustments[activeStripFrame]?.zoom ?? 1}
+                  onChange={(event) => updateStripAdjustment('zoom', Number(event.target.value))}
+                />
+              </label>
+              <label>
+                Move left-right
+                <input
+                  type="range"
+                  min={-100}
+                  max={100}
+                  step={1}
+                  value={stripAdjustments[activeStripFrame]?.offsetX ?? 0}
+                  onChange={(event) => updateStripAdjustment('offsetX', Number(event.target.value))}
+                />
+              </label>
+              <label>
+                Move up-down
+                <input
+                  type="range"
+                  min={-100}
+                  max={100}
+                  step={1}
+                  value={stripAdjustments[activeStripFrame]?.offsetY ?? 0}
+                  onChange={(event) => updateStripAdjustment('offsetY', Number(event.target.value))}
+                />
+              </label>
+            </div>
+          ) : null}
           {cameraError ? <p className="status">{cameraError}</p> : null}
           <video ref={videoRef} autoPlay playsInline muted className={`camera ${cameraReady ? 'live' : ''}`} />
           {capturedSrc ? (

@@ -662,6 +662,37 @@ h3 {
   gap: 0.7rem;
 }
 
+.crop-controls {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  border-radius: 16px;
+  border: 1px solid rgba(33, 70, 131, 0.14);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.crop-controls label {
+  gap: 0.35rem;
+  font-size: 0.84rem;
+}
+
+.crop-controls input[type='range'] {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.strip-frame-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.strip-frame-pills button {
+  padding: 0.5rem 0.8rem;
+  font-size: 0.82rem;
+}
+
 .contest-grid {
   display: grid;
   gap: 1rem;
