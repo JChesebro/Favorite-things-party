@@ -46,6 +46,45 @@ export const partyGameIdeas = [
   },
 ]
 
+export const superlativePollPrompts = [
+  'Most likely to have five candles glowing at once',
+  'Best-dressed favorite thing of the night',
+  'Most likely to find the coziest corner in any room',
+  'Most likely to bring the perfect hostess touch',
+  'Most likely to have the most aesthetic snack plate',
+  'Most likely to recommend your next favorite purchase',
+  'Most likely to keep a signature scent for every season',
+  'Most likely to own the prettiest winter mug collection',
+  'Most likely to turn any table into a styled tablescape',
+  'Most likely to have the best party playlist save',
+]
+
+export const twoTruthsAndFavoritePrompts = [
+  'Share two true favorite things you bought this year and one fake one.',
+  'Share two true favorite comfort rituals and one fake one.',
+  'Share two true favorite kitchen items and one fake one.',
+  'Share two true favorite beauty or self-care items and one fake one.',
+  'Share two true favorite travel essentials and one fake one.',
+  'Share two true favorite home decor finds and one fake one.',
+  'Share two true favorite small luxuries and one fake one.',
+  'Share two true favorite holiday traditions and one fake one.',
+  'Share two true favorite hosting habits and one fake one.',
+  'Share two true favorite weekend treats and one fake one.',
+]
+
+export const polaroidCaptionContestPrompts = [
+  'Caption this as if it were a magazine cover headline.',
+  'Caption this with your best winter party one-liner.',
+  'Caption this like a movie title from a cozy holiday rom-com.',
+  'Caption this as if the photo had its own gossip column.',
+  'Caption this with the vibe of a dramatic award show moment.',
+  'Caption this with a fake product slogan for the party.',
+  'Caption this as if your table started a band tonight.',
+  'Caption this like a luxury candle scent description.',
+  'Caption this as if it were the final frame of a music video.',
+  'Caption this with your most iconic three-word punchline.',
+]
+
 export const sampleGuestPreview = [
   {
     id: 'preview-1',

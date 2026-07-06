@@ -3,8 +3,10 @@ import {
   eventInfo,
   giftRules,
   icebreakerPrompts,
-  partyGameIdeas,
+  polaroidCaptionContestPrompts,
   sampleGuestPreview,
+  superlativePollPrompts,
+  twoTruthsAndFavoritePrompts,
   triviaPrompts,
 } from './data'
 import {
@@ -208,6 +210,9 @@ export default function App() {
   const [galleryMessage, setGalleryMessage] = useState('')
   const [icebreakerIndex, setIcebreakerIndex] = useState(0)
   const [triviaIndex, setTriviaIndex] = useState(0)
+  const [superlativeIndex, setSuperlativeIndex] = useState(0)
+  const [twoTruthsIndex, setTwoTruthsIndex] = useState(0)
+  const [captionContestIndex, setCaptionContestIndex] = useState(0)
   const [photoStyle, setPhotoStyle] = useState<PhotoStyle>('polaroid')
   const [ownedGalleryIds, setOwnedGalleryIds] = useState<string[]>(() => {
     if (typeof window === 'undefined') return []
@@ -780,16 +785,40 @@ export default function App() {
       <section className="grid two-up">
         <article className="card">
           <div className="section-header">
-            <h2>Party game ideas</h2>
-            <span className="muted">We can turn one of these into a live game next.</span>
+            <h2>Guest spotlight games</h2>
+            <span className="muted">For guests who RSVP yes. Kind prompts only.</span>
           </div>
           <div className="idea-grid">
-            {partyGameIdeas.map((idea) => (
-              <article className="idea-card" key={idea.title}>
-                <strong>{idea.title}</strong>
-                <p>{idea.description}</p>
-              </article>
-            ))}
+            <article className="game-card">
+              <span className="eyebrow">Superlatives poll</span>
+              <h3>{superlativePollPrompts[superlativeIndex % superlativePollPrompts.length]}</h3>
+              <p className="game-question">Guests vote live or the host can tally by show of hands.</p>
+              <div className="camera-actions invite-actions">
+                <button type="button" onClick={() => setSuperlativeIndex((current) => current + 1)}>
+                  Next superlative
+                </button>
+              </div>
+            </article>
+            <article className="game-card">
+              <span className="eyebrow">Two truths and a favorite</span>
+              <h3>{twoTruthsAndFavoritePrompts[twoTruthsIndex % twoTruthsAndFavoritePrompts.length]}</h3>
+              <p className="game-question">Each guest shares two true favorites and one fake favorite. Everyone guesses the fake.</p>
+              <div className="camera-actions invite-actions">
+                <button type="button" onClick={() => setTwoTruthsIndex((current) => current + 1)}>
+                  Next two truths prompt
+                </button>
+              </div>
+            </article>
+            <article className="game-card">
+              <span className="eyebrow">Polaroid caption contest</span>
+              <h3>{polaroidCaptionContestPrompts[captionContestIndex % polaroidCaptionContestPrompts.length]}</h3>
+              <p className="game-question">Guests pin up their photo with a funny caption. Crowd vote decides the winner.</p>
+              <div className="camera-actions invite-actions">
+                <button type="button" onClick={() => setCaptionContestIndex((current) => current + 1)}>
+                  Next caption prompt
+                </button>
+              </div>
+            </article>
           </div>
         </article>
 
