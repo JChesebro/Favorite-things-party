@@ -63,12 +63,17 @@ function authHeaders() {
 async function request<T>(path: string, init?: RequestInit) {
   if (!supabaseUrl) throw new Error('Supabase URL is not configured.')
 
+  const headers = new Headers(authHeaders())
+  if (init?.headers) {
+    const incoming = new Headers(init.headers)
+    incoming.forEach((value, key) => {
+      headers.set(key, value)
+    })
+  }
+
   const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
     ...init,
-    headers: {
-      ...authHeaders(),
-      ...(init?.headers || {}),
-    },
+    headers,
   })
 
   if (!response.ok) {
