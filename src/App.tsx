@@ -939,7 +939,7 @@ export default function App() {
         <article className="card photo-card card-icicle icicle-variant-5">
           <div className="section-header">
             <h2>Photo booth</h2>
-            <span className="muted">Capture now, connect shared storage later.</span>
+            <span className="muted">Capture now, connect shared storage later. Captions and voting happen under each shared photo.</span>
           </div>
           <label>
             Photo style
@@ -995,11 +995,12 @@ export default function App() {
 
       <section className="card">
         <div className="section-header">
-          <h2>Shared gallery</h2>
+          <h2>Shared gallery + caption contest</h2>
           <button type="button" onClick={syncSharedData} className="secondary-button">
             Refresh shared data
           </button>
         </div>
+        <p className="muted">Add your caption directly under any photo, then vote on your favorites.</p>
         <div className="gallery">
           {galleryPreview.length ? (
             galleryPreview.map((item) => (
@@ -1011,6 +1012,26 @@ export default function App() {
                     Remove my photo
                   </button>
                 ) : null}
+                <div className="contest-input-row">
+                  <input
+                    value={captionDrafts[item.id] || ''}
+                    onChange={(event) => handleCaptionDraftChange(item.id, event.target.value)}
+                    placeholder="Write a funny caption"
+                  />
+                  <button type="button" onClick={() => submitCaptionEntry(item.id)}>
+                    Submit caption
+                  </button>
+                </div>
+                <div className="contest-entries">
+                  {(contestEntriesByPhoto[item.id] || []).slice(0, 3).map((entry) => (
+                    <div className="contest-entry" key={`gallery-entry-${entry.id}`}>
+                      <p>{entry.text}</p>
+                      <button type="button" className="secondary-button" onClick={() => voteForCaption(entry.id)}>
+                        Vote ({entry.votes})
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </article>
             ))
           ) : (
