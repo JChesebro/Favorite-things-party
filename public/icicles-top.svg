@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="84" viewBox="0 0 1200 84" fill="none">
+  <defs>
+    <linearGradient id="iceGrad" x1="600" y1="0" x2="600" y2="84" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="0.38" stop-color="#DFF0FF" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#9EC6EE" stop-opacity="0.72"/>
+    </linearGradient>
+    <linearGradient id="iceEdge" x1="0" y1="0" x2="0" y2="84" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7FDFF" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#7FB1E0" stop-opacity="0.72"/>
+    </linearGradient>
+    <filter id="frostGlow" x="-2%" y="-20%" width="104%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="0.6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="8" fill="#EAF6FF" fill-opacity="0.92"/>
+
+  <g filter="url(#frostGlow)">
+    <path d="M24 8h20l-7 58-3 10-3-10-7-58Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M72 8h16l-5 40-3 8-3-8-5-40Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M112 8h22l-8 64-3 10-3-10-8-64Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M166 8h14l-4 32-3 7-3-7-4-32Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M206 8h18l-6 50-3 9-3-9-6-50Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+
+    <path d="M274 8h20l-7 60-3 10-3-10-7-60Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M322 8h15l-5 36-2 7-3-7-5-36Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M360 8h22l-8 62-3 10-3-10-8-62Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M414 8h16l-5 44-3 8-3-8-5-44Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+
+    <path d="M486 8h20l-7 58-3 9-3-9-7-58Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M534 8h14l-4 30-3 7-3-7-4-30Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M572 8h22l-8 64-3 10-3-10-8-64Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M626 8h17l-6 46-2 8-3-8-6-46Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+
+    <path d="M702 8h19l-6 55-3 9-4-9-6-55Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M748 8h15l-5 38-2 7-3-7-5-38Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M786 8h23l-8 66-3 10-4-10-8-66Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M842 8h16l-5 43-3 8-3-8-5-43Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+
+    <path d="M918 8h19l-7 57-3 9-3-9-6-57Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M964 8h14l-4 34-3 7-3-7-4-34Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M1002 8h22l-8 65-3 10-3-10-8-65Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M1056 8h16l-5 40-3 8-3-8-5-40Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+
+    <path d="M1128 8h20l-7 60-3 9-3-9-7-60Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+    <path d="M1176 8h14l-4 30-3 7-3-7-4-30Z" fill="url(#iceGrad)" stroke="url(#iceEdge)" stroke-width="1"/>
+  </g>
+
+  <g opacity="0.36">
+    <circle cx="85" cy="6" r="2" fill="#FFFFFF"/>
+    <circle cx="295" cy="5" r="1.8" fill="#FFFFFF"/>
+    <circle cx="470" cy="6" r="2" fill="#FFFFFF"/>
+    <circle cx="715" cy="6" r="2" fill="#FFFFFF"/>
+    <circle cx="905" cy="5" r="1.8" fill="#FFFFFF"/>
+    <circle cx="1112" cy="6" r="2" fill="#FFFFFF"/>
+  </g>
+</svg>

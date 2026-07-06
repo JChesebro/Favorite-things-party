@@ -560,9 +560,10 @@ export default function App() {
       <section className="grid two-up">
         <article className="card accent-panel card-icicle">
           <div className="section-header">
-            <h2>How the party works</h2>
+            <h2>Soiree details</h2>
           </div>
           <ul className="rule-list">
+            <li>Dress code: all white.</li>
             {giftRules.map((rule) => (
               <li key={rule}>{rule}</li>
             ))}
