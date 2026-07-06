@@ -642,7 +642,7 @@ export default function App() {
           <p className="muted">
             {showHostBoard
               ? 'Host board reveals names and codes only after unlock. Guest board remains anonymized.'
-              : 'Responses are shared for everyone, but names and edit codes stay private.'}
+              : 'Guest board displays anonymized responses only.'}
           </p>
           <div className={`response-columns ${showGuestBoard && showHostBoard ? 'split' : ''}`}>
             {showGuestBoard ? (
