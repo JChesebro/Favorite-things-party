@@ -361,6 +361,7 @@ export default function App() {
         <div className="hero-copy">
           <div className="eyebrow">{eventInfo.theme}</div>
           <h1>{eventInfo.title}</h1>
+          <p className="theme-script">Favorite Things - Year 12</p>
           <p className="lede">{eventInfo.note}</p>
           <p className="intro-text">
             Editable invites, shared guest responses, a favorite-thing guessing game, and a photo booth designed for the Glacier Soiree
