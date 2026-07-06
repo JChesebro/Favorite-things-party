@@ -575,12 +575,14 @@ export default function App() {
     const grouped: Record<string, CaptionContestEntry[]> = {}
     captionContestEntries.forEach((entry) => {
       if (!contestPhotoIds.includes(entry.photoId)) return
-      if (!grouped[entry.photoId]) grouped[entry.photoId] = []
-      grouped[entry.photoId].push(entry)
+      const existingEntries = grouped[entry.photoId] ?? []
+      grouped[entry.photoId] = [...existingEntries, entry]
     })
 
     Object.keys(grouped).forEach((photoId) => {
-      grouped[photoId].sort((left, right) => {
+      const entries = grouped[photoId]
+      if (!entries) return
+      entries.sort((left, right) => {
         if (right.votes === left.votes) return right.createdAt - left.createdAt
         return right.votes - left.votes
       })
