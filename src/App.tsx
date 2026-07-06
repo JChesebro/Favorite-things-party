@@ -558,7 +558,7 @@ export default function App() {
       </section>
 
       <section className="grid two-up">
-        <article className="card accent-panel card-icicle">
+        <article className="card accent-panel card-icicle icicle-variant-1">
           <div className="section-header">
             <h2>Soiree details</h2>
           </div>
@@ -576,7 +576,7 @@ export default function App() {
           </div>
         </article>
 
-        <article className="card card-icicle">
+        <article className="card card-icicle icicle-variant-2">
           <div className="section-header">
             <h2>Invite editor</h2>
             <span className="muted">Return anytime and load your response with your email.</span>
@@ -672,7 +672,7 @@ export default function App() {
       </section>
 
       <section className="grid two-up">
-        <article className="card card-icicle">
+        <article className="card card-icicle icicle-variant-3">
           <div className="section-header">
             <h2>{showGuestBoard && showHostBoard ? 'Response boards' : showHostBoard ? 'Host response board' : 'Anonymous response board'}</h2>
             <label className="mini-filter">
@@ -748,7 +748,7 @@ export default function App() {
           </div>
         </article>
 
-        <article className="card card-icicle">
+        <article className="card card-icicle icicle-variant-4">
           <div className="section-header">
             <h2>Trivia lounge</h2>
             <span className="muted">Thought-provoking prompts for table conversation and mini rounds.</span>
@@ -793,7 +793,7 @@ export default function App() {
           </div>
         </article>
 
-        <article className="card photo-card card-icicle">
+        <article className="card photo-card card-icicle icicle-variant-5">
           <div className="section-header">
             <h2>Photo booth</h2>
             <span className="muted">Capture now, connect shared storage later.</span>
