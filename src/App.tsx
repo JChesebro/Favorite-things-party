@@ -7,6 +7,14 @@ import {
   sampleGuestPreview,
   triviaPrompts,
 } from './data'
+import {
+  findSharedInviteByCode,
+  isBackendConfigured,
+  loadSharedGallery,
+  loadSharedInvites,
+  saveSharedGalleryItem,
+  saveSharedInvite,
+} from './lib/backend'
 
 type GalleryItem = {
   id: string
@@ -32,9 +40,6 @@ type InviteRecord = {
 
 type InviteDraft = Omit<InviteRecord, 'id' | 'code' | 'updatedAt'>
 
-const galleryStorageKey = 'favorite-things-gallery'
-const inviteStorageKey = 'favorite-things-invites'
-
 const emptyDraft: InviteDraft = {
   name: '',
   email: '',
@@ -47,12 +52,12 @@ const emptyDraft: InviteDraft = {
   notes: '',
 }
 
-function createCode() {
-  return `GL-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
-}
-
 function shuffle<T>(items: T[]) {
   return [...items].sort(() => Math.random() - 0.5)
+}
+
+function createCode() {
+  return `GL-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
 }
 
 function buildPolaroid(source: string, caption: string) {
@@ -133,21 +138,12 @@ function wrapText(text: string, maxWidth: number, context: CanvasRenderingContex
   return lines
 }
 
-function readArray<T>(key: string, fallback: T[]) {
-  if (typeof window === 'undefined') return fallback
-  const stored = window.localStorage.getItem(key)
-  if (!stored) return fallback
-
-  try {
-    return JSON.parse(stored) as T[]
-  } catch {
-    return fallback
-  }
+function toInviteRecord(item: InviteRecord) {
+  return item
 }
 
 export default function App() {
   const [gallery, setGallery] = useState<GalleryItem[]>([])
-  const [galleryLoaded, setGalleryLoaded] = useState(false)
   const [galleryCaption, setGalleryCaption] = useState('Favorite things and a few good moments')
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraError, setCameraError] = useState('')
@@ -156,29 +152,66 @@ export default function App() {
   const [inviteCode, setInviteCode] = useState('')
   const [inviteMessage, setInviteMessage] = useState('')
   const [savedInvites, setSavedInvites] = useState<InviteRecord[]>([])
+  const [galleryMessage, setGalleryMessage] = useState('')
   const [favoriteThingIndex, setFavoriteThingIndex] = useState(0)
   const [revealedFavoriteThing, setRevealedFavoriteThing] = useState(false)
   const [icebreakerIndex, setIcebreakerIndex] = useState(0)
   const [triviaIndex, setTriviaIndex] = useState(0)
-  const [responseFilter, setResponseFilter] = useState('all')
+  const [responseFilter, setResponseFilter] = useState('')
+  const [sharedStatus, setSharedStatus] = useState(
+    isBackendConfigured() ? 'Shared backend connected.' : 'Backend not configured yet. Using local preview data.',
+  )
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const sharedBackendEnabled = isBackendConfigured()
 
   useEffect(() => {
-    setGallery(readArray<GalleryItem>(galleryStorageKey, []))
-    setSavedInvites(readArray<InviteRecord>(inviteStorageKey, []))
-    setGalleryLoaded(true)
-  }, [])
+    let cancelled = false
 
-  useEffect(() => {
-    if (!galleryLoaded) return
-    window.localStorage.setItem(galleryStorageKey, JSON.stringify(gallery))
-  }, [gallery, galleryLoaded])
+    async function loadSharedData() {
+      try {
+        const [invites, galleryItems] = await Promise.all([loadSharedInvites(), loadSharedGallery()])
+        if (cancelled) return
+        setSavedInvites(invites.map(toInviteRecord))
+        setGallery(galleryItems)
+        setSharedStatus(sharedBackendEnabled ? 'Shared backend synced.' : 'Backend not configured yet. Using local preview data.')
+      } catch (error) {
+        if (cancelled) return
+        setSavedInvites(sampleGuestPreview)
+        setGallery([])
+        setSharedStatus(
+          error instanceof Error
+            ? `Shared backend unavailable: ${error.message}`
+            : 'Shared backend unavailable. Showing local preview data.',
+        )
+      }
+    }
 
-  useEffect(() => {
-    window.localStorage.setItem(inviteStorageKey, JSON.stringify(savedInvites))
-  }, [savedInvites])
+    loadSharedData()
+
+    const interval = window.setInterval(() => {
+      if (sharedBackendEnabled) {
+        loadSharedData()
+      }
+    }, 30000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [sharedBackendEnabled])
+
+  async function syncSharedData() {
+    try {
+      const [invites, galleryItems] = await Promise.all([loadSharedInvites(), loadSharedGallery()])
+      setSavedInvites(invites.map(toInviteRecord))
+      setGallery(galleryItems)
+      setSharedStatus(sharedBackendEnabled ? 'Shared backend synced.' : 'Backend not configured yet. Using local preview data.')
+    } catch (error) {
+      setSharedStatus(error instanceof Error ? `Could not refresh shared data: ${error.message}` : 'Could not refresh shared data.')
+    }
+  }
 
   async function startCamera() {
     setCameraError('')
@@ -215,15 +248,12 @@ export default function App() {
   }
 
   async function addToGallery(src: string) {
-    setGallery((current) => [
-      {
-        id: crypto.randomUUID(),
-        src,
-        caption: galleryCaption,
-        createdAt: Date.now(),
-      },
-      ...current,
-    ])
+    const savedItem = await saveSharedGalleryItem({ src, caption: galleryCaption })
+    setGallery((current) => [savedItem, ...current.filter((item) => item.id !== savedItem.id)])
+    setGalleryMessage(sharedBackendEnabled ? 'Photo added to the shared gallery.' : 'Photo added locally. Connect Supabase to share it across devices.')
+    if (sharedBackendEnabled) {
+      await syncSharedData()
+    }
   }
 
   async function savePolaroid() {
@@ -238,9 +268,14 @@ export default function App() {
     setInviteDraft((current) => ({ ...current, [field]: value }))
   }
 
-  function loadInviteByCode(code: string) {
+  async function loadInviteByCode(code: string) {
     const normalized = code.trim().toUpperCase()
-    const match = savedInvites.find((item) => item.code.toUpperCase() === normalized)
+    if (!normalized) {
+      setInviteMessage('Enter a code to load an invite.')
+      return
+    }
+
+    const match = await findSharedInviteByCode(normalized)
     if (!match) {
       setInviteMessage('No invite found for that code yet.')
       return
@@ -267,16 +302,18 @@ export default function App() {
     setInviteMessage('Ready for a new invite.')
   }
 
-  function handleInviteSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleInviteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const existing = inviteCode
       ? savedInvites.find((item) => item.code.toUpperCase() === inviteCode.trim().toUpperCase())
       : undefined
 
-    const nextInvite: InviteRecord = {
-      id: existing?.id ?? crypto.randomUUID(),
-      code: existing?.code ?? createCode(),
+    const nextCode = (existing?.code ?? inviteCode.trim().toUpperCase()) || createCode()
+
+    const nextInvite = await saveSharedInvite({
+      id: existing?.id,
+      code: nextCode,
       name: inviteDraft.name.trim(),
       email: inviteDraft.email.trim(),
       plusOnes: Number(inviteDraft.plusOnes) || 0,
@@ -286,15 +323,21 @@ export default function App() {
       triviaAnswerOne: inviteDraft.triviaAnswerOne.trim(),
       triviaAnswerTwo: inviteDraft.triviaAnswerTwo.trim(),
       notes: inviteDraft.notes.trim(),
-      updatedAt: Date.now(),
-    }
+    })
 
     setSavedInvites((current) => {
       const filtered = current.filter((item) => item.id !== nextInvite.id)
       return [nextInvite, ...filtered].sort((left, right) => right.updatedAt - left.updatedAt)
     })
     setInviteCode(nextInvite.code)
-    setInviteMessage(`Saved ${nextInvite.name}'s invite. Keep code ${nextInvite.code} to edit later.`)
+    setInviteMessage(
+      sharedBackendEnabled
+        ? `Saved ${nextInvite.name}'s invite. Keep code ${nextInvite.code} to edit later.`
+        : `Saved locally for preview. Keep code ${nextInvite.code} to edit later.`,
+    )
+    if (sharedBackendEnabled) {
+      await syncSharedData()
+    }
   }
 
   const visibleInvites = savedInvites.length ? savedInvites : sampleGuestPreview
@@ -308,7 +351,9 @@ export default function App() {
     [visibleInvites],
   )
   const galleryPreview = useMemo(() => gallery.slice(0, 6), [gallery])
-  const filteredResponses = responseFilter === 'all' ? visibleInvites : visibleInvites.filter((invite) => invite.name.toLowerCase().includes(responseFilter.toLowerCase()))
+  const filteredResponses = responseFilter
+    ? visibleInvites.filter((invite) => invite.name.toLowerCase().includes(responseFilter.toLowerCase()))
+    : visibleInvites
 
   return (
     <main className="page-shell">
@@ -318,8 +363,8 @@ export default function App() {
           <h1>{eventInfo.title}</h1>
           <p className="lede">{eventInfo.note}</p>
           <p className="intro-text">
-            A winter party page with editable invites, guest-visible answers, a favorite-thing guessing game, and a photo booth that fits the
-            Glacier Soiree palette.
+            Editable invites, shared guest responses, a favorite-thing guessing game, and a photo booth designed for the Glacier Soiree
+            palette.
           </p>
         </div>
         <div className="hero-grid">
@@ -337,8 +382,8 @@ export default function App() {
             <strong>{eventInfo.location}</strong>
           </div>
           <div>
-            <span className="meta-label">Planned style</span>
-            <strong>Blues, golds, champagne</strong>
+            <span className="meta-label">Status</span>
+            <strong>{sharedStatus}</strong>
           </div>
         </div>
       </section>
@@ -347,7 +392,7 @@ export default function App() {
         <article className="card accent-panel">
           <div className="section-header">
             <h2>How the party works</h2>
-            <span className="muted">Quick rules + room for updates later.</span>
+            <span className="muted">Rules + counts pulled from the shared board.</span>
           </div>
           <ul className="rule-list">
             {giftRules.map((rule) => (
@@ -431,7 +476,7 @@ export default function App() {
               <input
                 value={inviteDraft.favoriteThing}
                 onChange={(event) => handleDraftChange('favoriteThing', event.target.value)}
-                placeholder="The gift/item everyone will be talking about"
+                placeholder="The item everyone will be talking about"
               />
             </label>
             <div className="split-grid">
@@ -491,7 +536,7 @@ export default function App() {
             <h2>Guest board</h2>
             <label className="mini-filter">
               Filter by name
-              <input value={responseFilter} onChange={(event) => setResponseFilter(event.target.value)} placeholder="all" />
+              <input value={responseFilter} onChange={(event) => setResponseFilter(event.target.value)} placeholder="Search guests" />
             </label>
           </div>
           <p className="muted">Everyone can see who is coming, what they are bringing, and what they answered.</p>
@@ -540,9 +585,7 @@ export default function App() {
             <p className="game-question">
               {activeFavoriteThing?.favoriteThing || 'Have guests add their favorite thing and reveal it in rounds.'}
             </p>
-            {revealedFavoriteThing && activeFavoriteThing ? (
-              <p className="reveal-line">Answer: {activeFavoriteThing.name}</p>
-            ) : null}
+            {revealedFavoriteThing && activeFavoriteThing ? <p className="reveal-line">Answer: {activeFavoriteThing.name}</p> : null}
             <div className="camera-actions invite-actions">
               <button
                 type="button"
@@ -583,7 +626,7 @@ export default function App() {
         <article className="card">
           <div className="section-header">
             <h2>Party game ideas</h2>
-            <span className="muted">These are the live-at-the-party game concepts we can refine next.</span>
+            <span className="muted">We can turn one of these into a live game next.</span>
           </div>
           <div className="idea-grid">
             {partyGameIdeas.map((idea) => (
@@ -640,13 +683,16 @@ export default function App() {
               </div>
             </div>
           ) : null}
+          {galleryMessage ? <p className="status">{galleryMessage}</p> : null}
         </article>
       </section>
 
       <section className="card">
         <div className="section-header">
           <h2>Shared gallery</h2>
-          <span className="muted">Local preview now; shared storage can be wired next.</span>
+          <button type="button" onClick={syncSharedData} className="secondary-button">
+            Refresh shared data
+          </button>
         </div>
         <div className="gallery">
           {galleryPreview.length ? (
