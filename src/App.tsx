@@ -29,7 +29,6 @@ type InviteRecord = {
   name: string
   email: string
   plusOnes: number
-  bringingDish: string
   icebreakerAnswer: string
   triviaAnswerOne: string
   triviaAnswerTwo: string
@@ -44,7 +43,6 @@ const emptyDraft: InviteDraft = {
   name: '',
   email: '',
   plusOnes: 0,
-  bringingDish: '',
   icebreakerAnswer: '',
   triviaAnswerOne: '',
   triviaAnswerTwo: '',
@@ -329,7 +327,6 @@ export default function App() {
       name: match.name,
       email: match.email,
       plusOnes: match.plusOnes,
-      bringingDish: match.bringingDish,
       icebreakerAnswer: match.icebreakerAnswer,
       triviaAnswerOne: match.triviaAnswerOne,
       triviaAnswerTwo: match.triviaAnswerTwo,
@@ -360,7 +357,7 @@ export default function App() {
       name: inviteDraft.name.trim(),
       email: inviteDraft.email.trim(),
       plusOnes: Number(inviteDraft.plusOnes) || 0,
-      bringingDish: inviteDraft.bringingDish.trim(),
+      bringingDish: '',
       icebreakerAnswer: inviteDraft.icebreakerAnswer.trim(),
       triviaAnswerOne: inviteDraft.triviaAnswerOne.trim(),
       triviaAnswerTwo: inviteDraft.triviaAnswerTwo.trim(),
@@ -391,13 +388,9 @@ export default function App() {
       })),
     [visibleInvites],
   )
-  const activeDishRound = anonymizedInvites.length ? anonymizedInvites[dishRoundIndex % anonymizedInvites.length] : undefined
+  const activeRound = anonymizedInvites.length ? anonymizedInvites[dishRoundIndex % anonymizedInvites.length] : undefined
   const invitedGuestCount = useMemo(
     () => visibleInvites.reduce((total, invite) => total + 1 + Number(invite.plusOnes || 0), 0),
-    [visibleInvites],
-  )
-  const totalBringing = useMemo(
-    () => visibleInvites.filter((invite) => invite.bringingDish).length,
     [visibleInvites],
   )
   const galleryPreview = useMemo(() => gallery.slice(0, 6), [gallery])
@@ -406,7 +399,6 @@ export default function App() {
         const query = responseFilter.toLowerCase()
         return (
           invite.alias.toLowerCase().includes(query) ||
-          invite.bringingDish.toLowerCase().includes(query) ||
           invite.icebreakerAnswer.toLowerCase().includes(query) ||
           invite.triviaAnswerOne.toLowerCase().includes(query) ||
           invite.triviaAnswerTwo.toLowerCase().includes(query)
@@ -419,7 +411,6 @@ export default function App() {
         return (
           invite.name.toLowerCase().includes(query) ||
           invite.email.toLowerCase().includes(query) ||
-          invite.bringingDish.toLowerCase().includes(query) ||
           invite.icebreakerAnswer.toLowerCase().includes(query) ||
           invite.triviaAnswerOne.toLowerCase().includes(query) ||
           invite.triviaAnswerTwo.toLowerCase().includes(query)
@@ -459,6 +450,11 @@ export default function App() {
             <span className="meta-label">Status</span>
             <strong>{sharedStatus}</strong>
           </div>
+        </div>
+        <div className="hero-image-strip">
+          <img src="/theme-glacier-lounge.svg" alt="Blue ambient lighting inspiration" />
+          <img src="/theme-frosted-table.svg" alt="Snow and candle table styling inspiration" />
+          <img src="/theme-winter-invite.svg" alt="Elegant winter typography inspiration" />
         </div>
       </section>
 
@@ -528,10 +524,6 @@ export default function App() {
               <span className="meta-label">Estimated guests</span>
               <strong>{invitedGuestCount}</strong>
             </div>
-            <div>
-              <span className="meta-label">Bringing food</span>
-              <strong>{totalBringing}</strong>
-            </div>
           </div>
         </article>
 
@@ -587,14 +579,6 @@ export default function App() {
                 />
               </label>
             </div>
-            <label>
-              What food are you bringing?
-              <input
-                value={inviteDraft.bringingDish}
-                onChange={(event) => handleDraftChange('bringingDish', event.target.value)}
-                placeholder="For example: whipped feta, cookies, sparkling grapes"
-              />
-            </label>
             <div className="split-grid">
               <label>
                 Icebreaker answer
@@ -652,7 +636,7 @@ export default function App() {
             <h2>{showGuestBoard && showHostBoard ? 'Response boards' : showHostBoard ? 'Host response board' : 'Anonymous response board'}</h2>
             <label className="mini-filter">
               Filter responses
-              <input value={responseFilter} onChange={(event) => setResponseFilter(event.target.value)} placeholder="Search dishes or answers" />
+              <input value={responseFilter} onChange={(event) => setResponseFilter(event.target.value)} placeholder="Search answers" />
             </label>
           </div>
           <p className="muted">
@@ -675,10 +659,6 @@ export default function App() {
                         <span className="code-pill">Anonymous</span>
                       </div>
                       <div className="guest-grid">
-                        <div>
-                          <span className="meta-label">Food</span>
-                          <p>{invite.bringingDish || 'Not added yet'}</p>
-                        </div>
                         <div>
                           <span className="meta-label">Icebreaker</span>
                           <p>{invite.icebreakerAnswer || 'Not answered yet'}</p>
@@ -710,10 +690,6 @@ export default function App() {
                       </div>
                       <div className="guest-grid">
                         <div>
-                          <span className="meta-label">Food</span>
-                          <p>{invite.bringingDish || 'Not added yet'}</p>
-                        </div>
-                        <div>
                           <span className="meta-label">Icebreaker</span>
                           <p>{invite.icebreakerAnswer || 'Not answered yet'}</p>
                         </div>
@@ -733,18 +709,18 @@ export default function App() {
 
         <article className="card">
           <div className="section-header">
-            <h2>Mystery dish game</h2>
-            <span className="muted">Guess which anonymous guest profile submitted each dish.</span>
+            <h2>Mystery response game</h2>
+            <span className="muted">Guess which anonymous guest profile submitted each answer.</span>
           </div>
           <div className="game-card">
             <span className="eyebrow">Round {anonymizedInvites.length ? (dishRoundIndex % anonymizedInvites.length) + 1 : 1}</span>
-            <h3>{activeDishRound?.alias ? 'Which anonymous guest posted this dish?' : 'Invite responses unlock the round'}</h3>
+            <h3>{activeRound?.alias ? 'Which anonymous guest posted this answer?' : 'Invite responses unlock the round'}</h3>
             <p className="game-question">
-              {activeDishRound?.bringingDish || 'Have guests add what they are bringing so you can play this live.'}
+              {activeRound?.icebreakerAnswer || activeRound?.triviaAnswerOne || 'Have guests add answers so you can play this live.'}
             </p>
-            {revealedDishOwner && activeDishRound ? (
+            {revealedDishOwner && activeRound ? (
               <p className="reveal-line">
-                Answer: {showHostBoard ? `${activeDishRound.alias} (${activeDishRound.name})` : activeDishRound.alias}
+                Answer: {showHostBoard ? `${activeRound.alias} (${activeRound.name})` : activeRound.alias}
               </p>
             ) : null}
             <div className="camera-actions invite-actions">

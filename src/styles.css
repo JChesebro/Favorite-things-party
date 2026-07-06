@@ -1,8 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Allura&family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@500;700;800&display=swap');
-
 :root {
   color-scheme: light;
-  font-family: 'Manrope', 'Avenir Next', 'Segoe UI', 'Helvetica Neue', sans-serif;
+  font-family: 'Avenir Next', 'Avenir', 'Segoe UI', 'Helvetica Neue', sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color: #122341;
@@ -87,7 +85,7 @@ label {
 h1,
 h2 {
   margin: 0;
-  font-family: 'Playfair Display', 'Didot', 'Bodoni MT', 'Baskerville', 'Times New Roman', serif;
+  font-family: 'Didot', 'Bodoni MT', 'Baskerville', 'Times New Roman', serif;
   letter-spacing: -0.02em;
 }
 
@@ -166,11 +164,26 @@ h2 {
 
 .theme-script {
   margin: 0.15rem 0 0;
-  font-family: 'Allura', 'Snell Roundhand', 'Apple Chancery', 'Bradley Hand', 'URW Chancery L', cursive;
+  font-family: 'Snell Roundhand', 'Apple Chancery', 'Bradley Hand', 'URW Chancery L', cursive;
   font-size: clamp(1.5rem, 3.6vw, 2.5rem);
   color: #2e5ea8;
   letter-spacing: 0.03em;
   text-shadow: 0 6px 18px rgba(47, 92, 166, 0.2);
+}
+
+.hero-image-strip {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.hero-image-strip img {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(42, 78, 142, 0.24);
+  box-shadow: 0 10px 24px rgba(21, 45, 88, 0.16);
 }
 
 .theme-gallery {
@@ -545,6 +558,10 @@ h3 {
   }
 
   .unlock-row {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-image-strip {
     grid-template-columns: 1fr;
   }
 }
