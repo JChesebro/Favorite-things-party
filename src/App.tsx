@@ -69,6 +69,16 @@ function createCode() {
   return `GL-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
 }
 
+function loadCanvasImage(source: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = reject
+    image.crossOrigin = 'anonymous'
+    image.src = source
+  })
+}
+
 function buildPolaroid(source: string, caption: string) {
   return new Promise<string>((resolve, reject) => {
     const image = new Image()
@@ -128,61 +138,60 @@ function buildPolaroid(source: string, caption: string) {
   })
 }
 
-function buildPhotoStrip(source: string, caption: string) {
-  return new Promise<string>((resolve, reject) => {
-    const image = new Image()
-    image.onload = () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = 1080
-      canvas.height = 1920
-      const context = canvas.getContext('2d')
+async function buildPhotoStrip(sources: string[], caption: string) {
+  const frameSources = sources.slice(0, 3)
+  if (frameSources.length !== 3) {
+    throw new Error('Photo strip needs exactly 3 photos.')
+  }
 
-      if (!context) {
-        reject(new Error('Canvas unavailable'))
-        return
-      }
+  const images = await Promise.all(frameSources.map((source) => loadCanvasImage(source)))
 
-      context.fillStyle = '#f7efe4'
-      context.fillRect(0, 0, canvas.width, canvas.height)
+  const canvas = document.createElement('canvas')
+  canvas.width = 1080
+  canvas.height = 1920
+  const context = canvas.getContext('2d')
 
-      context.fillStyle = '#fff7ee'
-      context.fillRect(74, 48, 932, 1824)
+  if (!context) {
+    throw new Error('Canvas unavailable')
+  }
 
-      const frameX = 132
-      const frameWidth = 816
-      const frameHeight = 500
-      const squareSize = Math.min(image.width, image.height)
-      const sx = (image.width - squareSize) / 2
-      const sy = (image.height - squareSize) / 2
+  context.fillStyle = '#f7efe4'
+  context.fillRect(0, 0, canvas.width, canvas.height)
 
-      const filters = ['saturate(1.05)', 'contrast(1.04) sepia(0.08)', 'brightness(1.03) hue-rotate(-4deg)']
-      filters.forEach((filter, index) => {
-        const frameY = 128 + index * 560
-        context.save()
-        context.fillStyle = '#fdf8f1'
-        context.fillRect(frameX - 18, frameY - 18, frameWidth + 36, frameHeight + 36)
-        context.filter = filter
-        context.drawImage(image, sx, sy, squareSize, squareSize, frameX, frameY, frameWidth, frameHeight)
-        context.restore()
-      })
+  context.fillStyle = '#fff7ee'
+  context.fillRect(74, 48, 932, 1824)
 
-      context.fillStyle = '#0f2348'
-      context.font = '700 46px Georgia, serif'
-      context.fillText('Glacier Soiree Booth', 138, 1822)
+  const frameX = 132
+  const frameWidth = 816
+  const frameHeight = 500
+  const filters = ['saturate(1.05)', 'contrast(1.04) sepia(0.08)', 'brightness(1.03) hue-rotate(-4deg)']
 
-      context.fillStyle = '#7e6238'
-      context.font = '30px Georgia, serif'
-      const lines = caption.trim() ? wrapText(caption.trim(), 730, context) : ['Favorite things night']
-      lines.slice(0, 1).forEach((line) => {
-        context.fillText(line, 138, 1864)
-      })
+  images.forEach((image, index) => {
+    const frameY = 128 + index * 560
+    const squareSize = Math.min(image.width, image.height)
+    const sx = (image.width - squareSize) / 2
+    const sy = (image.height - squareSize) / 2
 
-      resolve(canvas.toDataURL('image/png'))
-    }
-    image.onerror = reject
-    image.crossOrigin = 'anonymous'
-    image.src = source
+    context.save()
+    context.fillStyle = '#fdf8f1'
+    context.fillRect(frameX - 18, frameY - 18, frameWidth + 36, frameHeight + 36)
+    context.filter = filters[index] || 'none'
+    context.drawImage(image, sx, sy, squareSize, squareSize, frameX, frameY, frameWidth, frameHeight)
+    context.restore()
   })
+
+  context.fillStyle = '#0f2348'
+  context.font = '700 46px Georgia, serif'
+  context.fillText('Glacier Soiree Booth', 138, 1822)
+
+  context.fillStyle = '#7e6238'
+  context.font = '30px Georgia, serif'
+  const lines = caption.trim() ? wrapText(caption.trim(), 730, context) : []
+  lines.slice(0, 1).forEach((line) => {
+    context.fillText(line, 138, 1864)
+  })
+
+  return canvas.toDataURL('image/png')
 }
 
 function wrapText(text: string, maxWidth: number, context: CanvasRenderingContext2D) {
@@ -210,10 +219,11 @@ function toInviteRecord(item: InviteRecord) {
 
 export default function App() {
   const [gallery, setGallery] = useState<GalleryItem[]>([])
-  const [galleryCaption, setGalleryCaption] = useState('Favorite things and a few good moments')
+  const [galleryCaption, setGalleryCaption] = useState('')
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraError, setCameraError] = useState('')
   const [capturedSrc, setCapturedSrc] = useState('')
+  const [stripSources, setStripSources] = useState<string[]>([])
   const [inviteDraft, setInviteDraft] = useState<InviteDraft>(emptyDraft)
   const [inviteMessage, setInviteMessage] = useState('')
   const [savedInvites, setSavedInvites] = useState<InviteRecord[]>([])
@@ -299,6 +309,41 @@ export default function App() {
   }, [votedCaptionEntryIds])
 
   useEffect(() => {
+    if (photoStyle === 'polaroid') {
+      setStripSources([])
+    } else {
+      setCapturedSrc('')
+    }
+  }, [photoStyle])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function buildStripPreview() {
+      if (photoStyle !== 'strip') return
+      if (stripSources.length !== 3) {
+        setCapturedSrc('')
+        return
+      }
+
+      try {
+        const rendered = await buildPhotoStrip(stripSources, galleryCaption)
+        if (cancelled) return
+        setCapturedSrc(rendered)
+      } catch {
+        if (cancelled) return
+        setCapturedSrc('')
+      }
+    }
+
+    buildStripPreview()
+
+    return () => {
+      cancelled = true
+    }
+  }, [photoStyle, stripSources, galleryCaption])
+
+  useEffect(() => {
     let cancelled = false
 
     async function loadSharedData() {
@@ -356,6 +401,18 @@ export default function App() {
     setCameraReady(false)
   }
 
+  function addStripFrame(source: string) {
+    setStripSources((current) => {
+      if (current.length >= 3) {
+        setGalleryMessage('Photo strip already has 3 frames. Clear it to retake.')
+        return current
+      }
+      const next = [...current, source]
+      setGalleryMessage(`Added frame ${next.length} of 3 for the strip.`)
+      return next
+    })
+  }
+
   async function capturePhoto() {
     const video = videoRef.current
     if (!video) return
@@ -368,8 +425,54 @@ export default function App() {
     if (!context) return
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
     const src = canvas.toDataURL('image/png')
-    const nextImage = photoStyle === 'strip' ? await buildPhotoStrip(src, galleryCaption) : await buildPolaroid(src, galleryCaption)
+
+    if (photoStyle === 'strip') {
+      addStripFrame(src)
+      return
+    }
+
+    const nextImage = await buildPolaroid(src, galleryCaption)
     setCapturedSrc(nextImage)
+  }
+
+  function clearStripFrames() {
+    setStripSources([])
+    setCapturedSrc('')
+    setGalleryMessage('Cleared strip frames. Add 3 new photos.')
+  }
+
+  async function downloadImage(src: string, filename: string) {
+    try {
+      const response = await fetch(src)
+      if (!response.ok) throw new Error('Download failed')
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = objectUrl
+      link.download = filename
+      link.click()
+      URL.revokeObjectURL(objectUrl)
+      return
+    } catch {
+      const link = document.createElement('a')
+      link.href = src
+      link.download = filename
+      link.click()
+    }
+  }
+
+  async function downloadAllGalleryPhotos() {
+    if (!gallery.length) {
+      setGalleryMessage('No gallery photos to download yet.')
+      return
+    }
+
+    for (const [index, item] of gallery.entries()) {
+      await downloadImage(item.src, `glacier-party-photo-${String(index + 1).padStart(2, '0')}.png`)
+      await new Promise((resolve) => window.setTimeout(resolve, 140))
+    }
+
+    setGalleryMessage('Download started for all shared gallery photos.')
   }
 
   async function addToGallery(src: string) {
@@ -951,16 +1054,28 @@ export default function App() {
             </select>
           </label>
           <label>
-            Caption
-            <input value={galleryCaption} onChange={(event) => setGalleryCaption(event.target.value)} />
+            Print caption
+            <input
+              value={galleryCaption}
+              onChange={(event) => setGalleryCaption(event.target.value)}
+              placeholder="Appears right under Glacier Soiree Booth"
+            />
           </label>
+          {photoStyle === 'strip' ? (
+            <div className="strip-progress">
+              <span className="muted">Strip frames: {stripSources.length}/3</span>
+              <button type="button" className="secondary-button" onClick={clearStripFrames}>Clear strip</button>
+            </div>
+          ) : null}
           <div className="camera-actions">
             <button type="button" onClick={startCamera}>Open camera</button>
             <button type="button" onClick={stopCamera}>Stop camera</button>
-            <button type="button" onClick={capturePhoto} disabled={!cameraReady}>Take photo</button>
+            <button type="button" onClick={capturePhoto} disabled={!cameraReady || (photoStyle === 'strip' && stripSources.length >= 3)}>
+              {photoStyle === 'strip' ? 'Take strip frame' : 'Take photo'}
+            </button>
           </div>
           <button type="button" onClick={() => fileInputRef.current?.click()} className="secondary-button upload-button">
-            Upload instead
+            {photoStyle === 'strip' ? 'Upload strip frame' : 'Upload instead'}
           </button>
           <input
             ref={fileInputRef}
@@ -973,8 +1088,12 @@ export default function App() {
               const reader = new FileReader()
               reader.onload = async () => {
                 const src = String(reader.result)
-                const nextImage = photoStyle === 'strip' ? await buildPhotoStrip(src, galleryCaption) : await buildPolaroid(src, galleryCaption)
-                setCapturedSrc(nextImage)
+                if (photoStyle === 'strip') {
+                  addStripFrame(src)
+                } else {
+                  const nextImage = await buildPolaroid(src, galleryCaption)
+                  setCapturedSrc(nextImage)
+                }
               }
               reader.readAsDataURL(file)
               event.currentTarget.value = ''
@@ -998,9 +1117,16 @@ export default function App() {
       <section className="card">
         <div className="section-header">
           <h2>Shared gallery + caption contest</h2>
-          <button type="button" onClick={syncSharedData} className="secondary-button">
-            Refresh shared data
-          </button>
+          <div className="gallery-actions">
+            <button type="button" onClick={syncSharedData} className="secondary-button">
+              Refresh shared data
+            </button>
+            {hostUnlocked ? (
+              <button type="button" onClick={downloadAllGalleryPhotos} className="secondary-button">
+                Download all photos
+              </button>
+            ) : null}
+          </div>
         </div>
         <p className="muted">Add your caption directly under any photo, then vote on your favorites.</p>
         <div className="gallery">
@@ -1014,6 +1140,13 @@ export default function App() {
                     Remove my photo
                   </button>
                 ) : null}
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => downloadImage(item.src, `glacier-party-photo-${item.id}.png`)}
+                >
+                  Download photo
+                </button>
                 <div className="contest-input-row">
                   <input
                     value={captionDrafts[item.id] || ''}

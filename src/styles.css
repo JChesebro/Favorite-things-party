@@ -648,6 +648,20 @@ h3 {
   font-size: 0.85rem;
 }
 
+.gallery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: flex-end;
+}
+
+.strip-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+}
+
 .contest-grid {
   display: grid;
   gap: 1rem;
@@ -729,6 +743,10 @@ h3 {
 
   .contest-input-row {
     grid-template-columns: 1fr;
+  }
+
+  .gallery-actions {
+    justify-content: flex-start;
   }
 
 }
