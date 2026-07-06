@@ -50,14 +50,18 @@ function hasBackend() {
   return Boolean(supabaseUrl && supabaseAnonKey)
 }
 
-function authHeaders() {
-  if (!supabaseAnonKey) return { 'Content-Type': 'application/json' }
-  return {
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    apikey: supabaseAnonKey,
-    Authorization: `Bearer ${supabaseAnonKey}`,
-    Prefer: 'return=representation',
   }
+
+  if (supabaseAnonKey) {
+    headers.apikey = supabaseAnonKey
+    headers.Authorization = `Bearer ${supabaseAnonKey}`
+    headers.Prefer = 'return=representation'
+  }
+
+  return headers
 }
 
 async function request<T>(path: string, init?: RequestInit) {
