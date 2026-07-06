@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   eventInfo,
   giftRules,
-  icebreakers,
-  triviaQuestions,
-  wouldYouRather,
+  icebreakerPrompts,
+  partyGameIdeas,
+  sampleGuestPreview,
+  triviaPrompts,
 } from './data'
 
 type GalleryItem = {
@@ -14,8 +15,41 @@ type GalleryItem = {
   createdAt: number
 }
 
+type InviteRecord = {
+  id: string
+  code: string
+  name: string
+  email: string
+  plusOnes: number
+  bringingDish: string
+  favoriteThing: string
+  icebreakerAnswer: string
+  triviaAnswerOne: string
+  triviaAnswerTwo: string
+  notes: string
+  updatedAt: number
+}
+
+type InviteDraft = Omit<InviteRecord, 'id' | 'code' | 'updatedAt'>
+
 const galleryStorageKey = 'favorite-things-gallery'
-const rsvpStorageKey = 'favorite-things-rsvp'
+const inviteStorageKey = 'favorite-things-invites'
+
+const emptyDraft: InviteDraft = {
+  name: '',
+  email: '',
+  plusOnes: 0,
+  bringingDish: '',
+  favoriteThing: '',
+  icebreakerAnswer: '',
+  triviaAnswerOne: '',
+  triviaAnswerTwo: '',
+  notes: '',
+}
+
+function createCode() {
+  return `GL-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+}
 
 function shuffle<T>(items: T[]) {
   return [...items].sort(() => Math.random() - 0.5)
@@ -35,15 +69,15 @@ function buildPolaroid(source: string, caption: string) {
         return
       }
 
-      context.fillStyle = '#f4efe7'
+      context.fillStyle = '#f7f1e7'
       context.fillRect(0, 0, canvas.width, canvas.height)
 
       context.save()
-      context.shadowColor = 'rgba(28, 22, 18, 0.18)'
-      context.shadowBlur = 18
-      context.shadowOffsetY = 16
-      context.fillStyle = '#fbf7f0'
-      context.fillRect(80, 70, 1040, 1340)
+      context.shadowColor = 'rgba(20, 38, 72, 0.24)'
+      context.shadowBlur = 22
+      context.shadowOffsetY = 18
+      context.fillStyle = '#fbf8f2'
+      context.fillRect(86, 74, 1028, 1342)
       context.restore()
 
       const frameX = 120
@@ -61,11 +95,11 @@ function buildPolaroid(source: string, caption: string) {
       context.drawImage(image, sx, sy, squareSize, squareSize, frameX, frameY, frameWidth, frameHeight)
       context.restore()
 
-      context.fillStyle = '#201914'
+      context.fillStyle = '#0f2348'
       context.font = '700 48px Georgia, serif'
-      context.fillText('Favorite Things', 124, 1280)
+      context.fillText('Glacier Soiree', 124, 1280)
 
-      context.fillStyle = '#5f5145'
+      context.fillStyle = '#7e6238'
       context.font = '32px Georgia, serif'
       const lines = caption.trim() ? wrapText(caption.trim(), 560, context) : ['Add a caption']
       lines.slice(0, 2).forEach((line, index) => {
@@ -99,37 +133,42 @@ function wrapText(text: string, maxWidth: number, context: CanvasRenderingContex
   return lines
 }
 
+function readArray<T>(key: string, fallback: T[]) {
+  if (typeof window === 'undefined') return fallback
+  const stored = window.localStorage.getItem(key)
+  if (!stored) return fallback
+
+  try {
+    return JSON.parse(stored) as T[]
+  } catch {
+    return fallback
+  }
+}
+
 export default function App() {
-  const [currentIcebreaker, setCurrentIcebreaker] = useState(icebreakers[0])
-  const [triviaAnswer, setTriviaAnswer] = useState('')
-  const [triviaResult, setTriviaResult] = useState('')
-  const [wouldYouRatherPrompt, setWouldYouRatherPrompt] = useState(wouldYouRather[0])
-  const [giftWinner, setGiftWinner] = useState('')
-  const [guestList, setGuestList] = useState('')
   const [gallery, setGallery] = useState<GalleryItem[]>([])
   const [galleryLoaded, setGalleryLoaded] = useState(false)
-  const [caption, setCaption] = useState('Favorite things and a few good moments')
+  const [galleryCaption, setGalleryCaption] = useState('Favorite things and a few good moments')
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraError, setCameraError] = useState('')
   const [capturedSrc, setCapturedSrc] = useState('')
-  const [rsvpStatus, setRsvpStatus] = useState('')
+  const [inviteDraft, setInviteDraft] = useState<InviteDraft>(emptyDraft)
+  const [inviteCode, setInviteCode] = useState('')
+  const [inviteMessage, setInviteMessage] = useState('')
+  const [savedInvites, setSavedInvites] = useState<InviteRecord[]>([])
+  const [favoriteThingIndex, setFavoriteThingIndex] = useState(0)
+  const [revealedFavoriteThing, setRevealedFavoriteThing] = useState(false)
+  const [icebreakerIndex, setIcebreakerIndex] = useState(0)
+  const [triviaIndex, setTriviaIndex] = useState(0)
+  const [responseFilter, setResponseFilter] = useState('all')
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
-    const storedGallery = window.localStorage.getItem(galleryStorageKey)
-    if (storedGallery) {
-      try {
-        setGallery(JSON.parse(storedGallery) as GalleryItem[])
-      } catch {
-        window.localStorage.removeItem(galleryStorageKey)
-      }
-    }
+    setGallery(readArray<GalleryItem>(galleryStorageKey, []))
+    setSavedInvites(readArray<InviteRecord>(inviteStorageKey, []))
     setGalleryLoaded(true)
-
-    const storedRsvp = window.localStorage.getItem(rsvpStorageKey)
-    if (storedRsvp) setRsvpStatus(storedRsvp)
   }, [])
 
   useEffect(() => {
@@ -138,8 +177,8 @@ export default function App() {
   }, [gallery, galleryLoaded])
 
   useEffect(() => {
-    if (rsvpStatus) window.localStorage.setItem(rsvpStorageKey, rsvpStatus)
-  }, [rsvpStatus])
+    window.localStorage.setItem(inviteStorageKey, JSON.stringify(savedInvites))
+  }, [savedInvites])
 
   async function startCamera() {
     setCameraError('')
@@ -171,7 +210,7 @@ export default function App() {
     if (!context) return
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
     const src = canvas.toDataURL('image/png')
-    const polaroid = await buildPolaroid(src, caption)
+    const polaroid = await buildPolaroid(src, galleryCaption)
     setCapturedSrc(polaroid)
   }
 
@@ -180,7 +219,7 @@ export default function App() {
       {
         id: crypto.randomUUID(),
         src,
-        caption,
+        caption: galleryCaption,
         createdAt: Date.now(),
       },
       ...current,
@@ -191,54 +230,98 @@ export default function App() {
     if (!capturedSrc) return
     const link = document.createElement('a')
     link.href = capturedSrc
-    link.download = 'favorite-things-polaroid.png'
+    link.download = 'glacier-soiree-polaroid.png'
     link.click()
   }
 
-  function randomizeIcebreaker() {
-    setCurrentIcebreaker(shuffle(icebreakers)[0] ?? currentIcebreaker)
+  function handleDraftChange(field: keyof InviteDraft, value: string | number) {
+    setInviteDraft((current) => ({ ...current, [field]: value }))
   }
 
-  function randomizeWouldYouRather() {
-    setWouldYouRatherPrompt(shuffle(wouldYouRather)[0] ?? wouldYouRatherPrompt)
-  }
-
-  function drawGiftOrder() {
-    const names = guestList
-      .split('\n')
-      .map((name) => name.trim())
-      .filter(Boolean)
-    if (!names.length) {
-      setGiftWinner('Add names first to draw an order.')
+  function loadInviteByCode(code: string) {
+    const normalized = code.trim().toUpperCase()
+    const match = savedInvites.find((item) => item.code.toUpperCase() === normalized)
+    if (!match) {
+      setInviteMessage('No invite found for that code yet.')
       return
     }
-    setGiftWinner(shuffle(names).join(' • '))
+
+    setInviteDraft({
+      name: match.name,
+      email: match.email,
+      plusOnes: match.plusOnes,
+      bringingDish: match.bringingDish,
+      favoriteThing: match.favoriteThing,
+      icebreakerAnswer: match.icebreakerAnswer,
+      triviaAnswerOne: match.triviaAnswerOne,
+      triviaAnswerTwo: match.triviaAnswerTwo,
+      notes: match.notes,
+    })
+    setInviteCode(match.code)
+    setInviteMessage(`Loaded ${match.name}'s invite. Make changes and save again.`)
   }
 
-  function checkTrivia() {
-    const normalized = triviaAnswer.trim().toLowerCase()
-    const correctCount = triviaQuestions.filter((item) => item.answer.toLowerCase() === normalized).length
-    setTriviaResult(correctCount ? 'Nice match for one of the host answers.' : 'Close, but not one of the host answers yet.')
+  function resetDraft() {
+    setInviteDraft(emptyDraft)
+    setInviteCode('')
+    setInviteMessage('Ready for a new invite.')
   }
 
-  function handleRsvpSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleInviteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
-    const name = String(form.get('name') ?? '').trim()
-    const attending = String(form.get('attending') ?? 'yes')
 
-    setRsvpStatus(`${name || 'Guest'} RSVP saved locally as ${attending}. Connect Netlify Forms for live submissions.`)
-    event.currentTarget.reset()
+    const existing = inviteCode
+      ? savedInvites.find((item) => item.code.toUpperCase() === inviteCode.trim().toUpperCase())
+      : undefined
+
+    const nextInvite: InviteRecord = {
+      id: existing?.id ?? crypto.randomUUID(),
+      code: existing?.code ?? createCode(),
+      name: inviteDraft.name.trim(),
+      email: inviteDraft.email.trim(),
+      plusOnes: Number(inviteDraft.plusOnes) || 0,
+      bringingDish: inviteDraft.bringingDish.trim(),
+      favoriteThing: inviteDraft.favoriteThing.trim(),
+      icebreakerAnswer: inviteDraft.icebreakerAnswer.trim(),
+      triviaAnswerOne: inviteDraft.triviaAnswerOne.trim(),
+      triviaAnswerTwo: inviteDraft.triviaAnswerTwo.trim(),
+      notes: inviteDraft.notes.trim(),
+      updatedAt: Date.now(),
+    }
+
+    setSavedInvites((current) => {
+      const filtered = current.filter((item) => item.id !== nextInvite.id)
+      return [nextInvite, ...filtered].sort((left, right) => right.updatedAt - left.updatedAt)
+    })
+    setInviteCode(nextInvite.code)
+    setInviteMessage(`Saved ${nextInvite.name}'s invite. Keep code ${nextInvite.code} to edit later.`)
   }
 
+  const visibleInvites = savedInvites.length ? savedInvites : sampleGuestPreview
+  const activeFavoriteThing = visibleInvites.length ? visibleInvites[favoriteThingIndex % visibleInvites.length] : undefined
+  const invitedGuestCount = useMemo(
+    () => visibleInvites.reduce((total, invite) => total + 1 + Number(invite.plusOnes || 0), 0),
+    [visibleInvites],
+  )
+  const totalBringing = useMemo(
+    () => visibleInvites.filter((invite) => invite.bringingDish).length,
+    [visibleInvites],
+  )
   const galleryPreview = useMemo(() => gallery.slice(0, 6), [gallery])
+  const filteredResponses = responseFilter === 'all' ? visibleInvites : visibleInvites.filter((invite) => invite.name.toLowerCase().includes(responseFilter.toLowerCase()))
 
   return (
     <main className="page-shell">
-      <section className="hero card">
-        <div className="eyebrow">{eventInfo.theme}</div>
-        <h1>{eventInfo.title}</h1>
-        <p className="lede">{eventInfo.note}</p>
+      <section className="hero card hero-glow">
+        <div className="hero-copy">
+          <div className="eyebrow">{eventInfo.theme}</div>
+          <h1>{eventInfo.title}</h1>
+          <p className="lede">{eventInfo.note}</p>
+          <p className="intro-text">
+            A winter party page with editable invites, guest-visible answers, a favorite-thing guessing game, and a photo booth that fits the
+            Glacier Soiree palette.
+          </p>
+        </div>
         <div className="hero-grid">
           <div>
             <span className="meta-label">Hosts</span>
@@ -253,115 +336,282 @@ export default function App() {
             <span className="meta-label">Where</span>
             <strong>{eventInfo.location}</strong>
           </div>
+          <div>
+            <span className="meta-label">Planned style</span>
+            <strong>Blues, golds, champagne</strong>
+          </div>
         </div>
       </section>
 
       <section className="grid two-up">
-        <article className="card">
-          <h2>Gift exchange rules</h2>
-          <ul>
+        <article className="card accent-panel">
+          <div className="section-header">
+            <h2>How the party works</h2>
+            <span className="muted">Quick rules + room for updates later.</span>
+          </div>
+          <ul className="rule-list">
             {giftRules.map((rule) => (
               <li key={rule}>{rule}</li>
             ))}
           </ul>
+          <div className="stat-row">
+            <div>
+              <span className="meta-label">Estimated guests</span>
+              <strong>{invitedGuestCount}</strong>
+            </div>
+            <div>
+              <span className="meta-label">Bringing food</span>
+              <strong>{totalBringing}</strong>
+            </div>
+          </div>
         </article>
 
         <article className="card">
-          <h2>RSVP</h2>
-          <form
-            name="rsvp"
-            method="post"
-            data-netlify="true"
-            netlify-honeypot="bot-field"
-            onSubmit={handleRsvpSubmit}
-            className="stack"
-          >
-            <input type="hidden" name="form-name" value="rsvp" />
-            <p className="hidden-field">
+          <div className="section-header">
+            <h2>Invite editor</h2>
+            <span className="muted">Guests can update their invite with a saved code.</span>
+          </div>
+          <form className="stack form-grid" onSubmit={handleInviteSubmit}>
+            <div className="split-grid">
               <label>
-                Don’t fill this out: <input name="bot-field" />
+                Invite code
+                <div className="inline-actions">
+                  <input
+                    value={inviteCode}
+                    onChange={(event) => setInviteCode(event.target.value)}
+                    placeholder="Enter your code to edit later"
+                  />
+                  <button type="button" onClick={() => loadInviteByCode(inviteCode)}>
+                    Load
+                  </button>
+                </div>
               </label>
-            </p>
+              <label>
+                Name
+                <input
+                  value={inviteDraft.name}
+                  onChange={(event) => handleDraftChange('name', event.target.value)}
+                  type="text"
+                  placeholder="Your name"
+                  required
+                />
+              </label>
+            </div>
+            <div className="split-grid">
+              <label>
+                Email
+                <input
+                  value={inviteDraft.email}
+                  onChange={(event) => handleDraftChange('email', event.target.value)}
+                  type="email"
+                  placeholder="you@example.com"
+                />
+              </label>
+              <label>
+                Number coming
+                <input
+                  value={inviteDraft.plusOnes}
+                  onChange={(event) => handleDraftChange('plusOnes', Number(event.target.value))}
+                  type="number"
+                  min={0}
+                  max={12}
+                />
+              </label>
+            </div>
             <label>
-              Name
-              <input name="name" type="text" placeholder="Your name" required />
+              What food are you bringing?
+              <input
+                value={inviteDraft.bringingDish}
+                onChange={(event) => handleDraftChange('bringingDish', event.target.value)}
+                placeholder="For example: whipped feta, cookies, sparkling grapes"
+              />
             </label>
             <label>
-              Will you attend?
-              <select name="attending" defaultValue="yes">
-                <option value="yes">Yes</option>
-                <option value="maybe">Maybe</option>
-                <option value="no">No</option>
-              </select>
+              Favorite thing you’re bringing
+              <input
+                value={inviteDraft.favoriteThing}
+                onChange={(event) => handleDraftChange('favoriteThing', event.target.value)}
+                placeholder="The gift/item everyone will be talking about"
+              />
             </label>
-            <label>
-              Notes
-              <textarea name="notes" placeholder="Dietary notes or anything else we should know" rows={4} />
-            </label>
-            <button type="submit">Send RSVP</button>
+            <div className="split-grid">
+              <label>
+                Icebreaker answer
+                <textarea
+                  value={inviteDraft.icebreakerAnswer}
+                  onChange={(event) => handleDraftChange('icebreakerAnswer', event.target.value)}
+                  rows={3}
+                  placeholder="Your quick answer to the current icebreaker"
+                />
+              </label>
+              <label>
+                Trivia answer 1
+                <textarea
+                  value={inviteDraft.triviaAnswerOne}
+                  onChange={(event) => handleDraftChange('triviaAnswerOne', event.target.value)}
+                  rows={3}
+                  placeholder="Answer to the first trivia prompt"
+                />
+              </label>
+            </div>
+            <div className="split-grid">
+              <label>
+                Trivia answer 2
+                <textarea
+                  value={inviteDraft.triviaAnswerTwo}
+                  onChange={(event) => handleDraftChange('triviaAnswerTwo', event.target.value)}
+                  rows={3}
+                  placeholder="Answer to the second trivia prompt"
+                />
+              </label>
+              <label>
+                Notes
+                <textarea
+                  value={inviteDraft.notes}
+                  onChange={(event) => handleDraftChange('notes', event.target.value)}
+                  rows={3}
+                  placeholder="Dietary notes, timing, or anything else we should know"
+                />
+              </label>
+            </div>
+            <div className="camera-actions invite-actions">
+              <button type="submit">Save invite</button>
+              <button type="button" onClick={resetDraft} className="secondary-button">
+                New invite
+              </button>
+            </div>
           </form>
-          {rsvpStatus ? <p className="status">{rsvpStatus}</p> : null}
-        </article>
-      </section>
-
-      <section className="grid three-up">
-        <article className="card">
-          <div className="section-header">
-            <h2>Icebreakers</h2>
-            <button type="button" onClick={randomizeIcebreaker}>New prompt</button>
-          </div>
-          <p className="prompt">{currentIcebreaker}</p>
-        </article>
-
-        <article className="card">
-          <div className="section-header">
-            <h2>Would you rather</h2>
-            <button type="button" onClick={randomizeWouldYouRather}>Shuffle</button>
-          </div>
-          <p className="prompt">{wouldYouRatherPrompt}</p>
-        </article>
-
-        <article className="card">
-          <div className="section-header">
-            <h2>Trivia</h2>
-            <button type="button" onClick={checkTrivia}>Check</button>
-          </div>
-          <input value={triviaAnswer} onChange={(event) => setTriviaAnswer(event.target.value)} placeholder="Try an answer" />
-          <p className="status">{triviaResult || 'Host note: use this as a quick party quiz.'}</p>
+          {inviteMessage ? <p className="status invite-status">{inviteMessage}</p> : null}
         </article>
       </section>
 
       <section className="grid two-up">
         <article className="card">
-          <h2>Gift picker</h2>
-          <textarea
-            value={guestList}
-            onChange={(event) => setGuestList(event.target.value)}
-            placeholder="Paste guest names, one per line"
-            rows={8}
-          />
           <div className="section-header">
-            <button type="button" onClick={drawGiftOrder}>Draw order</button>
-            <span className="muted">Randomized for a game-night style reveal.</span>
+            <h2>Guest board</h2>
+            <label className="mini-filter">
+              Filter by name
+              <input value={responseFilter} onChange={(event) => setResponseFilter(event.target.value)} placeholder="all" />
+            </label>
           </div>
-          {giftWinner ? <p className="prompt">{giftWinner}</p> : null}
+          <p className="muted">Everyone can see who is coming, what they are bringing, and what they answered.</p>
+          <div className="guest-board">
+            {filteredResponses.map((invite) => (
+              <article className="guest-card" key={invite.id}>
+                <div className="guest-card-top">
+                  <div>
+                    <strong>{invite.name}</strong>
+                    <p>{1 + Number(invite.plusOnes || 0)} coming</p>
+                  </div>
+                  <span className="code-pill">{invite.code}</span>
+                </div>
+                <div className="guest-grid">
+                  <div>
+                    <span className="meta-label">Food</span>
+                    <p>{invite.bringingDish || 'Not added yet'}</p>
+                  </div>
+                  <div>
+                    <span className="meta-label">Favorite thing</span>
+                    <p>{invite.favoriteThing || 'Not added yet'}</p>
+                  </div>
+                  <div>
+                    <span className="meta-label">Icebreaker</span>
+                    <p>{invite.icebreakerAnswer || 'Not answered yet'}</p>
+                  </div>
+                  <div>
+                    <span className="meta-label">Trivia answers</span>
+                    <p>{invite.triviaAnswerOne || 'Not answered yet'}</p>
+                    <p>{invite.triviaAnswerTwo || ''}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </article>
+
+        <article className="card">
+          <div className="section-header">
+            <h2>Favorite things game</h2>
+            <span className="muted">A guessing game built from what people are bringing.</span>
+          </div>
+          <div className="game-card">
+            <span className="eyebrow">Round {visibleInvites.length ? (favoriteThingIndex % visibleInvites.length) + 1 : 1}</span>
+            <h3>{activeFavoriteThing?.name ? 'Who brought this?' : 'Invite responses unlock the round'}</h3>
+            <p className="game-question">
+              {activeFavoriteThing?.favoriteThing || 'Have guests add their favorite thing and reveal it in rounds.'}
+            </p>
+            {revealedFavoriteThing && activeFavoriteThing ? (
+              <p className="reveal-line">Answer: {activeFavoriteThing.name}</p>
+            ) : null}
+            <div className="camera-actions invite-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setFavoriteThingIndex((current) => current + 1)
+                  setRevealedFavoriteThing(false)
+                }}
+              >
+                Next round
+              </button>
+              <button type="button" onClick={() => setRevealedFavoriteThing((current) => !current)} className="secondary-button">
+                {revealedFavoriteThing ? 'Hide answer' : 'Reveal answer'}
+              </button>
+            </div>
+          </div>
+          <div className="prompt-stack">
+            <div>
+              <span className="meta-label">Icebreaker prompt</span>
+              <p className="prompt">{icebreakerPrompts[icebreakerIndex % icebreakerPrompts.length]}</p>
+            </div>
+            <div className="section-header compact-header">
+              <button type="button" onClick={() => setIcebreakerIndex((current) => current + 1)}>
+                New icebreaker
+              </button>
+              <button type="button" onClick={() => setTriviaIndex((current) => current + 1)}>
+                New trivia prompt
+              </button>
+            </div>
+            <div>
+              <span className="meta-label">Trivia prompt</span>
+              <p className="prompt">{triviaPrompts[triviaIndex % triviaPrompts.length]}</p>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section className="grid two-up">
+        <article className="card">
+          <div className="section-header">
+            <h2>Party game ideas</h2>
+            <span className="muted">These are the live-at-the-party game concepts we can refine next.</span>
+          </div>
+          <div className="idea-grid">
+            {partyGameIdeas.map((idea) => (
+              <article className="idea-card" key={idea.title}>
+                <strong>{idea.title}</strong>
+                <p>{idea.description}</p>
+              </article>
+            ))}
+          </div>
         </article>
 
         <article className="card photo-card">
           <div className="section-header">
             <h2>Polaroid booth</h2>
-            <span className="muted">Capture now, connect storage later.</span>
+            <span className="muted">Capture now, connect shared storage later.</span>
           </div>
           <label>
             Caption
-            <input value={caption} onChange={(event) => setCaption(event.target.value)} />
+            <input value={galleryCaption} onChange={(event) => setGalleryCaption(event.target.value)} />
           </label>
           <div className="camera-actions">
             <button type="button" onClick={startCamera}>Open camera</button>
             <button type="button" onClick={stopCamera}>Stop camera</button>
             <button type="button" onClick={capturePhoto} disabled={!cameraReady}>Take photo</button>
           </div>
-          <button type="button" onClick={() => fileInputRef.current?.click()}>Upload instead</button>
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="secondary-button upload-button">
+            Upload instead
+          </button>
           <input
             ref={fileInputRef}
             type="file"
@@ -373,7 +623,7 @@ export default function App() {
               const reader = new FileReader()
               reader.onload = async () => {
                 const src = String(reader.result)
-                setCapturedSrc(await buildPolaroid(src, caption))
+                setCapturedSrc(await buildPolaroid(src, galleryCaption))
               }
               reader.readAsDataURL(file)
               event.currentTarget.value = ''
@@ -396,10 +646,14 @@ export default function App() {
       <section className="card">
         <div className="section-header">
           <h2>Shared gallery</h2>
-          <span className="muted">Local preview now; backend hook next.</span>
+          <span className="muted">Local preview now; shared storage can be wired next.</span>
         </div>
         <div className="gallery">
-          {galleryPreview.length ? galleryPreview.map((item) => <img key={item.id} src={item.src} alt={item.caption} />) : <p className="muted">No photos yet. Add the first Polaroid to start the wall.</p>}
+          {galleryPreview.length ? (
+            galleryPreview.map((item) => <img key={item.id} src={item.src} alt={item.caption} />)
+          ) : (
+            <p className="muted">No photos yet. Add the first Polaroid to start the wall.</p>
+          )}
         </div>
       </section>
     </main>
