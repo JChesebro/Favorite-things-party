@@ -31,12 +31,12 @@ export const triviaPrompts = [
 
 export const partyGameIdeas = [
   {
-    title: 'Guess the Favorite Thing',
-    description: 'Draw one favorite item from the guest board, then have the table guess who brought it before the reveal.',
+    title: 'Mystery Dish Match',
+    description: 'Draw one dish from the anonymous board, then have the room guess which guest profile submitted it before reveal.',
   },
   {
-    title: 'Favorite Things Relay',
-    description: 'Each round starts with one guest answer. The next person adds a related favorite thing until the table has built a chain.',
+    title: 'Anonymous Answer Ladder',
+    description: 'Start from one anonymous icebreaker answer and have each team add a connected answer until the chain breaks.',
   },
   {
     title: 'Glacier Trivia Vote',
@@ -51,7 +51,6 @@ export const sampleGuestPreview = [
     email: 'preview@example.com',
     plusOnes: 1,
     bringingDish: 'Sparkling cranberry bites',
-    favoriteThing: 'Mini candle set',
     icebreakerAnswer: 'A softly lit room and a good blanket.',
     triviaAnswerOne: 'Hot cider bar',
     triviaAnswerTwo: 'A playlist that starts calm and ends dancey.',
@@ -65,7 +64,6 @@ export const sampleGuestPreview = [
     email: 'sample@example.com',
     plusOnes: 0,
     bringingDish: 'Champagne grapes and brie',
-    favoriteThing: 'Gold-rimmed coupes',
     icebreakerAnswer: 'A favorite thing I already own and still love.',
     triviaAnswerOne: 'A clear tray for serving.',
     triviaAnswerTwo: 'Let guests vote with stickers.',

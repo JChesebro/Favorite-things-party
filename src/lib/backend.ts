@@ -29,7 +29,6 @@ type InviteInput = {
   email: string
   plusOnes: number
   bringingDish: string
-  favoriteThing: string
   icebreakerAnswer: string
   triviaAnswerOne: string
   triviaAnswerTwo: string
@@ -117,7 +116,6 @@ export async function saveSharedInvite(input: InviteInput) {
       email: input.email,
       plusOnes: input.plusOnes,
       bringingDish: input.bringingDish,
-      favoriteThing: input.favoriteThing,
       icebreakerAnswer: input.icebreakerAnswer,
       triviaAnswerOne: input.triviaAnswerOne,
       triviaAnswerTwo: input.triviaAnswerTwo,
@@ -133,7 +131,7 @@ export async function saveSharedInvite(input: InviteInput) {
     email: input.email,
     plus_ones: input.plusOnes,
     bringing_dish: input.bringingDish,
-    favorite_thing: input.favoriteThing,
+    favorite_thing: '',
     icebreaker_answer: input.icebreakerAnswer,
     trivia_answer_one: input.triviaAnswerOne,
     trivia_answer_two: input.triviaAnswerTwo,

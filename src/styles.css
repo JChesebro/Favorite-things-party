@@ -1,6 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Allura&family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@500;700;800&display=swap');
+
 :root {
   color-scheme: light;
-  font-family: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', sans-serif;
+  font-family: 'Manrope', 'Avenir Next', 'Segoe UI', 'Helvetica Neue', sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color: #122341;
@@ -85,7 +87,7 @@ label {
 h1,
 h2 {
   margin: 0;
-  font-family: 'Didot', 'Bodoni MT', 'Baskerville', 'Times New Roman', serif;
+  font-family: 'Playfair Display', 'Didot', 'Bodoni MT', 'Baskerville', 'Times New Roman', serif;
   letter-spacing: -0.02em;
 }
 
@@ -164,11 +166,38 @@ h2 {
 
 .theme-script {
   margin: 0.15rem 0 0;
-  font-family: 'Snell Roundhand', 'Apple Chancery', 'Bradley Hand', 'URW Chancery L', cursive;
+  font-family: 'Allura', 'Snell Roundhand', 'Apple Chancery', 'Bradley Hand', 'URW Chancery L', cursive;
   font-size: clamp(1.5rem, 3.6vw, 2.5rem);
   color: #2e5ea8;
   letter-spacing: 0.03em;
   text-shadow: 0 6px 18px rgba(47, 92, 166, 0.2);
+}
+
+.theme-gallery {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.theme-tile {
+  margin: 0;
+  border: 1px solid rgba(42, 78, 142, 0.18);
+  border-radius: 24px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.theme-tile img {
+  width: 100%;
+  display: block;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
+.theme-tile figcaption {
+  padding: 0.8rem 1rem 1rem;
+  font-size: 0.92rem;
+  color: rgba(17, 43, 83, 0.82);
 }
 
 .intro-text {

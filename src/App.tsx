@@ -30,7 +30,6 @@ type InviteRecord = {
   email: string
   plusOnes: number
   bringingDish: string
-  favoriteThing: string
   icebreakerAnswer: string
   triviaAnswerOne: string
   triviaAnswerTwo: string
@@ -45,7 +44,6 @@ const emptyDraft: InviteDraft = {
   email: '',
   plusOnes: 0,
   bringingDish: '',
-  favoriteThing: '',
   icebreakerAnswer: '',
   triviaAnswerOne: '',
   triviaAnswerTwo: '',
@@ -153,8 +151,8 @@ export default function App() {
   const [inviteMessage, setInviteMessage] = useState('')
   const [savedInvites, setSavedInvites] = useState<InviteRecord[]>([])
   const [galleryMessage, setGalleryMessage] = useState('')
-  const [favoriteThingIndex, setFavoriteThingIndex] = useState(0)
-  const [revealedFavoriteThing, setRevealedFavoriteThing] = useState(false)
+  const [dishRoundIndex, setDishRoundIndex] = useState(0)
+  const [revealedDishOwner, setRevealedDishOwner] = useState(false)
   const [icebreakerIndex, setIcebreakerIndex] = useState(0)
   const [triviaIndex, setTriviaIndex] = useState(0)
   const [responseFilter, setResponseFilter] = useState('')
@@ -286,7 +284,6 @@ export default function App() {
       email: match.email,
       plusOnes: match.plusOnes,
       bringingDish: match.bringingDish,
-      favoriteThing: match.favoriteThing,
       icebreakerAnswer: match.icebreakerAnswer,
       triviaAnswerOne: match.triviaAnswerOne,
       triviaAnswerTwo: match.triviaAnswerTwo,
@@ -318,7 +315,6 @@ export default function App() {
       email: inviteDraft.email.trim(),
       plusOnes: Number(inviteDraft.plusOnes) || 0,
       bringingDish: inviteDraft.bringingDish.trim(),
-      favoriteThing: inviteDraft.favoriteThing.trim(),
       icebreakerAnswer: inviteDraft.icebreakerAnswer.trim(),
       triviaAnswerOne: inviteDraft.triviaAnswerOne.trim(),
       triviaAnswerTwo: inviteDraft.triviaAnswerTwo.trim(),
@@ -341,7 +337,15 @@ export default function App() {
   }
 
   const visibleInvites = savedInvites.length ? savedInvites : sampleGuestPreview
-  const activeFavoriteThing = visibleInvites.length ? visibleInvites[favoriteThingIndex % visibleInvites.length] : undefined
+  const anonymizedInvites = useMemo(
+    () =>
+      visibleInvites.map((invite, index) => ({
+        ...invite,
+        alias: `Guest ${String(index + 1).padStart(2, '0')}`,
+      })),
+    [visibleInvites],
+  )
+  const activeDishRound = anonymizedInvites.length ? anonymizedInvites[dishRoundIndex % anonymizedInvites.length] : undefined
   const invitedGuestCount = useMemo(
     () => visibleInvites.reduce((total, invite) => total + 1 + Number(invite.plusOnes || 0), 0),
     [visibleInvites],
@@ -352,8 +356,17 @@ export default function App() {
   )
   const galleryPreview = useMemo(() => gallery.slice(0, 6), [gallery])
   const filteredResponses = responseFilter
-    ? visibleInvites.filter((invite) => invite.name.toLowerCase().includes(responseFilter.toLowerCase()))
-    : visibleInvites
+    ? anonymizedInvites.filter((invite) => {
+        const query = responseFilter.toLowerCase()
+        return (
+          invite.alias.toLowerCase().includes(query) ||
+          invite.bringingDish.toLowerCase().includes(query) ||
+          invite.icebreakerAnswer.toLowerCase().includes(query) ||
+          invite.triviaAnswerOne.toLowerCase().includes(query) ||
+          invite.triviaAnswerTwo.toLowerCase().includes(query)
+        )
+      })
+    : anonymizedInvites
 
   return (
     <main className="page-shell">
@@ -364,8 +377,7 @@ export default function App() {
           <p className="theme-script">Favorite Things - Year 12</p>
           <p className="lede">{eventInfo.note}</p>
           <p className="intro-text">
-            Editable invites, shared guest responses, a favorite-thing guessing game, and a photo booth designed for the Glacier Soiree
-            palette.
+            Editable invites, shared anonymous responses, and a photo booth designed for a modern Glacier Soiree palette.
           </p>
         </div>
         <div className="hero-grid">
@@ -386,6 +398,27 @@ export default function App() {
             <span className="meta-label">Status</span>
             <strong>{sharedStatus}</strong>
           </div>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="section-header">
+          <h2>Theme mood board</h2>
+          <span className="muted">Icy blues, candlelit champagne, and snow-white textures.</span>
+        </div>
+        <div className="theme-gallery">
+          <figure className="theme-tile">
+            <img src="/theme-glacier-lounge.svg" alt="Glacier-inspired lounge with blue ambient lighting" />
+            <figcaption>Glacier lighting and mirrored shimmer.</figcaption>
+          </figure>
+          <figure className="theme-tile">
+            <img src="/theme-frosted-table.svg" alt="Frosted table styling with candles and champagne tones" />
+            <figcaption>Snow textures with warm candle contrast.</figcaption>
+          </figure>
+          <figure className="theme-tile">
+            <img src="/theme-winter-invite.svg" alt="Elegant winter invitation typography direction" />
+            <figcaption>Elegant lettering and layered winter details.</figcaption>
+          </figure>
         </div>
       </section>
 
@@ -472,14 +505,6 @@ export default function App() {
                 placeholder="For example: whipped feta, cookies, sparkling grapes"
               />
             </label>
-            <label>
-              Favorite thing you’re bringing
-              <input
-                value={inviteDraft.favoriteThing}
-                onChange={(event) => handleDraftChange('favoriteThing', event.target.value)}
-                placeholder="The item everyone will be talking about"
-              />
-            </label>
             <div className="split-grid">
               <label>
                 Icebreaker answer
@@ -534,31 +559,27 @@ export default function App() {
       <section className="grid two-up">
         <article className="card">
           <div className="section-header">
-            <h2>Guest board</h2>
+            <h2>Anonymous response board</h2>
             <label className="mini-filter">
-              Filter by name
-              <input value={responseFilter} onChange={(event) => setResponseFilter(event.target.value)} placeholder="Search guests" />
+              Filter responses
+              <input value={responseFilter} onChange={(event) => setResponseFilter(event.target.value)} placeholder="Search dishes or answers" />
             </label>
           </div>
-          <p className="muted">Everyone can see who is coming, what they are bringing, and what they answered.</p>
+          <p className="muted">Responses are shared for everyone, but names and edit codes stay private.</p>
           <div className="guest-board">
             {filteredResponses.map((invite) => (
               <article className="guest-card" key={invite.id}>
                 <div className="guest-card-top">
                   <div>
-                    <strong>{invite.name}</strong>
+                    <strong>{invite.alias}</strong>
                     <p>{1 + Number(invite.plusOnes || 0)} coming</p>
                   </div>
-                  <span className="code-pill">{invite.code}</span>
+                  <span className="code-pill">Anonymous</span>
                 </div>
                 <div className="guest-grid">
                   <div>
                     <span className="meta-label">Food</span>
                     <p>{invite.bringingDish || 'Not added yet'}</p>
-                  </div>
-                  <div>
-                    <span className="meta-label">Favorite thing</span>
-                    <p>{invite.favoriteThing || 'Not added yet'}</p>
                   </div>
                   <div>
                     <span className="meta-label">Icebreaker</span>
@@ -577,28 +598,28 @@ export default function App() {
 
         <article className="card">
           <div className="section-header">
-            <h2>Favorite things game</h2>
-            <span className="muted">A guessing game built from what people are bringing.</span>
+            <h2>Mystery dish game</h2>
+            <span className="muted">Guess which anonymous guest profile submitted each dish.</span>
           </div>
           <div className="game-card">
-            <span className="eyebrow">Round {visibleInvites.length ? (favoriteThingIndex % visibleInvites.length) + 1 : 1}</span>
-            <h3>{activeFavoriteThing?.name ? 'Who brought this?' : 'Invite responses unlock the round'}</h3>
+            <span className="eyebrow">Round {anonymizedInvites.length ? (dishRoundIndex % anonymizedInvites.length) + 1 : 1}</span>
+            <h3>{activeDishRound?.alias ? 'Which anonymous guest posted this dish?' : 'Invite responses unlock the round'}</h3>
             <p className="game-question">
-              {activeFavoriteThing?.favoriteThing || 'Have guests add their favorite thing and reveal it in rounds.'}
+              {activeDishRound?.bringingDish || 'Have guests add what they are bringing so you can play this live.'}
             </p>
-            {revealedFavoriteThing && activeFavoriteThing ? <p className="reveal-line">Answer: {activeFavoriteThing.name}</p> : null}
+            {revealedDishOwner && activeDishRound ? <p className="reveal-line">Answer: {activeDishRound.alias}</p> : null}
             <div className="camera-actions invite-actions">
               <button
                 type="button"
                 onClick={() => {
-                  setFavoriteThingIndex((current) => current + 1)
-                  setRevealedFavoriteThing(false)
+                  setDishRoundIndex((current) => current + 1)
+                  setRevealedDishOwner(false)
                 }}
               >
                 Next round
               </button>
-              <button type="button" onClick={() => setRevealedFavoriteThing((current) => !current)} className="secondary-button">
-                {revealedFavoriteThing ? 'Hide answer' : 'Reveal answer'}
+              <button type="button" onClick={() => setRevealedDishOwner((current) => !current)} className="secondary-button">
+                {revealedDishOwner ? 'Hide answer' : 'Reveal anonymous profile'}
               </button>
             </div>
           </div>
