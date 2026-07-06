@@ -204,6 +204,18 @@ export async function saveSharedGalleryItem(input: GalleryInput) {
   }
 }
 
+export async function deleteSharedGalleryItem(id: string) {
+  if (!id.trim()) return
+  if (!hasBackend()) return
+
+  await request<GalleryRecord[]>(`${galleryTable}?id=eq.${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: {
+      Prefer: 'return=minimal',
+    },
+  })
+}
+
 export async function findSharedInviteByCode(code: string) {
   if (!hasBackend()) {
     return sampleGuestPreview.find((invite) => invite.code.toUpperCase() === code.trim().toUpperCase()) || null

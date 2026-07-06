@@ -8,6 +8,7 @@ import {
   triviaPrompts,
 } from './data'
 import {
+  deleteSharedGalleryItem,
   findSharedInviteByEmail,
   isBackendConfigured,
   loadSharedGallery,
@@ -38,6 +39,9 @@ type InviteRecord = {
 
 type InviteDraft = Omit<InviteRecord, 'id' | 'code' | 'updatedAt'>
 type ViewMode = 'guest' | 'host' | 'split'
+type PhotoStyle = 'polaroid' | 'strip'
+
+const ownedGalleryIdsStorageKey = 'glacier-owned-gallery-ids'
 
 const emptyDraft: InviteDraft = {
   name: '',
@@ -112,6 +116,63 @@ function buildPolaroid(source: string, caption: string) {
   })
 }
 
+function buildPhotoStrip(source: string, caption: string) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 1080
+      canvas.height = 1920
+      const context = canvas.getContext('2d')
+
+      if (!context) {
+        reject(new Error('Canvas unavailable'))
+        return
+      }
+
+      context.fillStyle = '#f7efe4'
+      context.fillRect(0, 0, canvas.width, canvas.height)
+
+      context.fillStyle = '#fff7ee'
+      context.fillRect(74, 48, 932, 1824)
+
+      const frameX = 132
+      const frameWidth = 816
+      const frameHeight = 500
+      const squareSize = Math.min(image.width, image.height)
+      const sx = (image.width - squareSize) / 2
+      const sy = (image.height - squareSize) / 2
+
+      const filters = ['saturate(1.05)', 'contrast(1.04) sepia(0.08)', 'brightness(1.03) hue-rotate(-4deg)']
+      filters.forEach((filter, index) => {
+        const frameY = 128 + index * 560
+        context.save()
+        context.fillStyle = '#fdf8f1'
+        context.fillRect(frameX - 18, frameY - 18, frameWidth + 36, frameHeight + 36)
+        context.filter = filter
+        context.drawImage(image, sx, sy, squareSize, squareSize, frameX, frameY, frameWidth, frameHeight)
+        context.restore()
+      })
+
+      context.fillStyle = '#0f2348'
+      context.font = '700 46px Georgia, serif'
+      context.fillText('Glacier Soiree Booth', 138, 1822)
+
+      context.fillStyle = '#7e6238'
+      context.font = '30px Georgia, serif'
+      const lines = caption.trim() ? wrapText(caption.trim(), 730, context) : ['Favorite things night']
+      lines.slice(0, 1).forEach((line) => {
+        context.fillText(line, 138, 1864)
+      })
+
+      resolve(canvas.toDataURL('image/png'))
+    }
+    image.onerror = reject
+    image.crossOrigin = 'anonymous'
+    image.src = source
+  })
+}
+
 function wrapText(text: string, maxWidth: number, context: CanvasRenderingContext2D) {
   const words = text.split(' ')
   const lines: string[] = []
@@ -147,6 +208,18 @@ export default function App() {
   const [galleryMessage, setGalleryMessage] = useState('')
   const [icebreakerIndex, setIcebreakerIndex] = useState(0)
   const [triviaIndex, setTriviaIndex] = useState(0)
+  const [photoStyle, setPhotoStyle] = useState<PhotoStyle>('polaroid')
+  const [ownedGalleryIds, setOwnedGalleryIds] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const saved = window.localStorage.getItem(ownedGalleryIdsStorageKey)
+      if (!saved) return []
+      const parsed = JSON.parse(saved)
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []
+    } catch {
+      return []
+    }
+  })
   const [responseFilter, setResponseFilter] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     if (typeof window === 'undefined') return 'guest'
@@ -161,6 +234,11 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const sharedBackendEnabled = isBackendConfigured()
   const hostViewCode = ((import.meta.env.VITE_HOST_VIEW_CODE as string | undefined) || 'glacier-host').trim()
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(ownedGalleryIdsStorageKey, JSON.stringify(ownedGalleryIds))
+  }, [ownedGalleryIds])
 
   useEffect(() => {
     let cancelled = false
@@ -232,16 +310,36 @@ export default function App() {
     if (!context) return
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
     const src = canvas.toDataURL('image/png')
-    const polaroid = await buildPolaroid(src, galleryCaption)
-    setCapturedSrc(polaroid)
+    const nextImage = photoStyle === 'strip' ? await buildPhotoStrip(src, galleryCaption) : await buildPolaroid(src, galleryCaption)
+    setCapturedSrc(nextImage)
   }
 
   async function addToGallery(src: string) {
     const savedItem = await saveSharedGalleryItem({ src, caption: galleryCaption })
     setGallery((current) => [savedItem, ...current.filter((item) => item.id !== savedItem.id)])
+    setOwnedGalleryIds((current) => Array.from(new Set([savedItem.id, ...current])))
     setGalleryMessage(sharedBackendEnabled ? 'Photo added to the shared gallery.' : 'Photo added locally. Connect Supabase to share it across devices.')
     if (sharedBackendEnabled) {
       await syncSharedData()
+    }
+  }
+
+  async function removeOwnedPhoto(photoId: string) {
+    if (!ownedGalleryIds.includes(photoId)) {
+      setGalleryMessage('You can only remove photos you added from this browser.')
+      return
+    }
+
+    try {
+      await deleteSharedGalleryItem(photoId)
+      setGallery((current) => current.filter((item) => item.id !== photoId))
+      setOwnedGalleryIds((current) => current.filter((id) => id !== photoId))
+      setGalleryMessage('Removed your photo from the gallery.')
+      if (sharedBackendEnabled) {
+        await syncSharedData()
+      }
+    } catch (error) {
+      setGalleryMessage(error instanceof Error ? `Could not remove photo: ${error.message}` : 'Could not remove photo right now.')
     }
   }
 
@@ -249,7 +347,7 @@ export default function App() {
     if (!capturedSrc) return
     const link = document.createElement('a')
     link.href = capturedSrc
-    link.download = 'glacier-soiree-polaroid.png'
+    link.download = photoStyle === 'strip' ? 'glacier-soiree-photostrip.png' : 'glacier-soiree-polaroid.png'
     link.click()
   }
 
@@ -370,7 +468,7 @@ export default function App() {
     () => visibleInvites.reduce((total, invite) => total + 1 + Number(invite.plusOnes || 0), 0),
     [visibleInvites],
   )
-  const galleryPreview = useMemo(() => gallery.slice(0, 6), [gallery])
+  const galleryPreview = useMemo(() => gallery.slice(0, 12), [gallery])
   const filteredResponses = responseFilter
     ? anonymizedInvites.filter((invite) => {
         const query = responseFilter.toLowerCase()
@@ -401,6 +499,10 @@ export default function App() {
     <main className="page-shell">
       <section className="hero card hero-glow">
         <div className="hero-copy">
+          <div className="champagne-row" aria-hidden="true">
+            <img src="/champagne-cheers.svg" alt="" />
+            <img src="/champagne-cheers.svg" alt="" />
+          </div>
           <div className="eyebrow">{eventInfo.theme}</div>
           <h1>{eventInfo.title}</h1>
           <p className="theme-script">Favorite Things - Year 12</p>
@@ -423,11 +525,6 @@ export default function App() {
             <span className="meta-label">Where</span>
             <strong>{eventInfo.location}</strong>
           </div>
-        </div>
-        <div className="theme-ribbon" aria-label="Glacier Soiree theme visuals">
-          <img src="/theme-glacier-lounge.svg" alt="Icy blue lounge inspiration" />
-          <img src="/theme-frosted-table.svg" alt="Champagne candle table inspiration" />
-          <img src="/theme-winter-invite.svg" alt="Elegant winter invitation style inspiration" />
         </div>
       </section>
 
@@ -461,7 +558,7 @@ export default function App() {
       </section>
 
       <section className="grid two-up">
-        <article className="card accent-panel">
+        <article className="card accent-panel card-icicle">
           <div className="section-header">
             <h2>How the party works</h2>
           </div>
@@ -478,7 +575,7 @@ export default function App() {
           </div>
         </article>
 
-        <article className="card">
+        <article className="card card-icicle">
           <div className="section-header">
             <h2>Invite editor</h2>
             <span className="muted">Return anytime and load your response with your email.</span>
@@ -574,7 +671,7 @@ export default function App() {
       </section>
 
       <section className="grid two-up">
-        <article className="card">
+        <article className="card card-icicle">
           <div className="section-header">
             <h2>{showGuestBoard && showHostBoard ? 'Response boards' : showHostBoard ? 'Host response board' : 'Anonymous response board'}</h2>
             <label className="mini-filter">
@@ -650,7 +747,7 @@ export default function App() {
           </div>
         </article>
 
-        <article className="card">
+        <article className="card card-icicle">
           <div className="section-header">
             <h2>Trivia lounge</h2>
             <span className="muted">Thought-provoking prompts for table conversation and mini rounds.</span>
@@ -695,11 +792,18 @@ export default function App() {
           </div>
         </article>
 
-        <article className="card photo-card">
+        <article className="card photo-card card-icicle">
           <div className="section-header">
-            <h2>Polaroid booth</h2>
+            <h2>Photo booth</h2>
             <span className="muted">Capture now, connect shared storage later.</span>
           </div>
+          <label>
+            Photo style
+            <select value={photoStyle} onChange={(event) => setPhotoStyle(event.target.value as PhotoStyle)}>
+              <option value="polaroid">Polaroid</option>
+              <option value="strip">Photo strip</option>
+            </select>
+          </label>
           <label>
             Caption
             <input value={galleryCaption} onChange={(event) => setGalleryCaption(event.target.value)} />
@@ -723,7 +827,8 @@ export default function App() {
               const reader = new FileReader()
               reader.onload = async () => {
                 const src = String(reader.result)
-                setCapturedSrc(await buildPolaroid(src, galleryCaption))
+                const nextImage = photoStyle === 'strip' ? await buildPhotoStrip(src, galleryCaption) : await buildPolaroid(src, galleryCaption)
+                setCapturedSrc(nextImage)
               }
               reader.readAsDataURL(file)
               event.currentTarget.value = ''
@@ -733,7 +838,7 @@ export default function App() {
           <video ref={videoRef} autoPlay playsInline muted className={`camera ${cameraReady ? 'live' : ''}`} />
           {capturedSrc ? (
             <div className="photo-preview">
-              <img src={capturedSrc} alt="Polaroid preview" className="polaroid-shot" />
+              <img src={capturedSrc} alt="Photo booth preview" className={photoStyle === 'strip' ? 'strip-shot' : 'polaroid-shot'} />
               <div className="camera-actions">
                 <button type="button" onClick={savePolaroid}>Save photo</button>
                 <button type="button" onClick={() => addToGallery(capturedSrc)}>Add to gallery</button>
@@ -753,7 +858,17 @@ export default function App() {
         </div>
         <div className="gallery">
           {galleryPreview.length ? (
-            galleryPreview.map((item) => <img key={item.id} src={item.src} alt={item.caption} />)
+            galleryPreview.map((item) => (
+              <article className="gallery-item" key={item.id}>
+                <img src={item.src} alt={item.caption || 'Party photo'} />
+                <p className="gallery-caption">{item.caption || 'Glacier booth moment'}</p>
+                {ownedGalleryIds.includes(item.id) ? (
+                  <button type="button" className="secondary-button" onClick={() => removeOwnedPhoto(item.id)}>
+                    Remove my photo
+                  </button>
+                ) : null}
+              </article>
+            ))
           ) : (
             <p className="muted">No photos yet. Add the first Polaroid to start the wall.</p>
           )}
