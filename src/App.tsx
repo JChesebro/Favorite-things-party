@@ -451,32 +451,6 @@ export default function App() {
             <strong>{sharedStatus}</strong>
           </div>
         </div>
-        <div className="hero-image-strip">
-          <img src="/theme-glacier-lounge.svg" alt="Blue ambient lighting inspiration" />
-          <img src="/theme-frosted-table.svg" alt="Snow and candle table styling inspiration" />
-          <img src="/theme-winter-invite.svg" alt="Elegant winter typography inspiration" />
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="section-header">
-          <h2>Theme mood board</h2>
-          <span className="muted">Icy blues, candlelit champagne, and snow-white textures.</span>
-        </div>
-        <div className="theme-gallery">
-          <figure className="theme-tile">
-            <img src="/theme-glacier-lounge.svg" alt="Glacier-inspired lounge with blue ambient lighting" />
-            <figcaption>Glacier lighting and mirrored shimmer.</figcaption>
-          </figure>
-          <figure className="theme-tile">
-            <img src="/theme-frosted-table.svg" alt="Frosted table styling with candles and champagne tones" />
-            <figcaption>Snow textures with warm candle contrast.</figcaption>
-          </figure>
-          <figure className="theme-tile">
-            <img src="/theme-winter-invite.svg" alt="Elegant winter invitation typography direction" />
-            <figcaption>Elegant lettering and layered winter details.</figcaption>
-          </figure>
-        </div>
       </section>
 
       <section className="card view-control-card">
