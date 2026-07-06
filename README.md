@@ -28,6 +28,7 @@ Required environment variables:
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_SUPABASE_INVITES_TABLE`
 - `VITE_SUPABASE_GALLERY_TABLE`
+- `VITE_HOST_VIEW_CODE`
 
 Use [supabase-schema.sql](/Users/Steph/Documents/favorite-things-party/supabase-schema.sql) to create the `guest_invites` and `gallery_entries` tables.
 
@@ -36,3 +37,4 @@ Use [supabase-schema.sql](/Users/Steph/Documents/favorite-things-party/supabase-
 - If the backend variables are not set, the site falls back to preview data so you can keep working locally.
 - Invite edits are saved by code so guests can reopen and update their own record later.
 - The live guest board and gallery will update automatically after you set the Supabase variables in Netlify.
+- Host view requires the host code and supports guest, host, and split board previews.
