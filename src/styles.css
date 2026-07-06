@@ -297,6 +297,23 @@ h3 {
   opacity: 0.95;
 }
 
+.card-icicle::after {
+  content: '';
+  position: absolute;
+  top: 42px;
+  left: 20px;
+  right: 20px;
+  height: 20px;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(7px 9px at 8% 35%, rgba(214, 236, 255, 0.58), transparent 70%),
+    radial-gradient(6px 8px at 28% 42%, rgba(214, 236, 255, 0.5), transparent 70%),
+    radial-gradient(7px 9px at 54% 38%, rgba(214, 236, 255, 0.54), transparent 70%),
+    radial-gradient(6px 8px at 76% 44%, rgba(214, 236, 255, 0.5), transparent 70%),
+    radial-gradient(7px 9px at 92% 40%, rgba(214, 236, 255, 0.52), transparent 70%);
+}
+
 .icicle-variant-1::before {
   left: 6px;
   right: 6px;
@@ -318,6 +335,7 @@ h3 {
   opacity: 0.92;
   transform: translateY(1px) scaleX(1.03);
   transform-origin: center top;
+  background-image: url('/icicles-top-broken.svg');
 }
 
 .icicle-variant-4::before {
@@ -334,6 +352,25 @@ h3 {
   transform: scaleX(1.01);
   transform-origin: center top;
   filter: contrast(1.04);
+  background-image: url('/icicles-top-broken.svg');
+}
+
+.icicle-variant-2::after,
+.icicle-variant-3::after,
+.icicle-variant-5::after {
+  opacity: 0.9;
+}
+
+.icicle-variant-3::after {
+  left: 16px;
+  right: 26px;
+  top: 44px;
+}
+
+.icicle-variant-5::after {
+  left: 14px;
+  right: 18px;
+  top: 43px;
 }
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
