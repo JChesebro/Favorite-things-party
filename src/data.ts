@@ -5,7 +5,7 @@ export const eventInfo = {
   time: '6:30 PM to 10:30 PM',
   location: '1332 Legendary Lane, Morrisville',
   theme: 'Blue ice, gold light, champagne glow',
-  note: 'A favorite things tradition celebrating 12 years together with a colder, brighter winter palette.',
+  note: 'Welcome to an evening of sparkling conversation, cozy favorites, and glacier-lit celebration.',
 }
 
 export const giftRules = [
@@ -24,23 +24,25 @@ export const icebreakerPrompts = [
 ]
 
 export const triviaPrompts = [
-  'What should everyone try before leaving the party?',
-  'What is your favorite cozy winter ritual?',
-  'What is your most reliable holiday hosting trick?',
+  'If your year had a title, what would it be and why?',
+  'What is one small luxury that always makes a day better?',
+  'Which favorite thing in your life has the best backstory?',
+  'If you could host this party anywhere in the world, where would it be?',
+  'What is one tradition you want to start in the next year?',
 ]
 
 export const partyGameIdeas = [
   {
-    title: 'Mystery Dish Match',
-    description: 'Draw one dish from the anonymous board, then have the room guess which guest profile submitted it before reveal.',
+    title: 'Glacier Table Trivia',
+    description: 'Read one thought-provoking prompt and let each table submit one answer. Vote on the most surprising response.',
   },
   {
-    title: 'Anonymous Answer Ladder',
-    description: 'Start from one anonymous icebreaker answer and have each team add a connected answer until the chain breaks.',
+    title: 'Story Spark Round',
+    description: 'Pull one trivia prompt, then each guest gives a 20-second story linked to that prompt.',
   },
   {
-    title: 'Glacier Trivia Vote',
-    description: 'Read a prompt and have everyone vote on the best answer. The guest wall shows the final responses afterward.',
+    title: 'Golden Vote Finale',
+    description: 'Everyone picks their favorite anonymous answer from the board, then reveal the winner at the end.',
   },
 ]
 

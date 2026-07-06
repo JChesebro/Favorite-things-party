@@ -214,3 +214,16 @@ export async function findSharedInviteByCode(code: string) {
   const item = data[0]
   return item ? toInvitePreview(item) : null
 }
+
+export async function findSharedInviteByEmail(email: string) {
+  const normalized = email.trim().toLowerCase()
+  if (!normalized) return null
+
+  if (!hasBackend()) {
+    return sampleGuestPreview.find((invite) => invite.email.toLowerCase() === normalized) || null
+  }
+
+  const data = await request<InviteRecord[]>(`${invitesTable}?select=*&email=eq.${encodeURIComponent(normalized)}&limit=1`)
+  const item = data[0]
+  return item ? toInvitePreview(item) : null
+}

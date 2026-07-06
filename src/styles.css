@@ -169,6 +169,23 @@ h2 {
   max-width: 64rem;
 }
 
+.theme-ribbon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.theme-ribbon img {
+  width: 100%;
+  height: 170px;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid rgba(35, 73, 136, 0.28);
+  box-shadow: 0 12px 26px rgba(20, 45, 88, 0.2);
+}
+
 .theme-script {
   margin: 0.15rem 0 0;
   font-family: 'Snell Roundhand', 'Apple Chancery', 'Bradley Hand', 'URW Chancery L', cursive;
@@ -499,6 +516,14 @@ h3 {
   border: 1px solid rgba(42, 78, 142, 0.16);
 }
 
+.photo-preview img.polaroid-shot {
+  max-width: 320px;
+  margin: 0 auto;
+  border-radius: 8px;
+  box-shadow: 0 20px 35px rgba(18, 32, 61, 0.26);
+  transform: rotate(-2deg);
+}
+
 .gallery {
   display: grid;
   gap: 1rem;
@@ -525,6 +550,14 @@ h3 {
 
   .unlock-row {
     grid-template-columns: 1fr;
+  }
+
+  .theme-ribbon {
+    grid-template-columns: 1fr;
+  }
+
+  .theme-ribbon img {
+    height: 200px;
   }
 
 }

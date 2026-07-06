@@ -8,7 +8,7 @@ import {
   triviaPrompts,
 } from './data'
 import {
-  findSharedInviteByCode,
+  findSharedInviteByEmail,
   isBackendConfigured,
   loadSharedGallery,
   loadSharedInvites,
@@ -47,10 +47,6 @@ const emptyDraft: InviteDraft = {
   triviaAnswerOne: '',
   triviaAnswerTwo: '',
   notes: '',
-}
-
-function shuffle<T>(items: T[]) {
-  return [...items].sort(() => Math.random() - 0.5)
 }
 
 function createCode() {
@@ -146,12 +142,9 @@ export default function App() {
   const [cameraError, setCameraError] = useState('')
   const [capturedSrc, setCapturedSrc] = useState('')
   const [inviteDraft, setInviteDraft] = useState<InviteDraft>(emptyDraft)
-  const [inviteCode, setInviteCode] = useState('')
   const [inviteMessage, setInviteMessage] = useState('')
   const [savedInvites, setSavedInvites] = useState<InviteRecord[]>([])
   const [galleryMessage, setGalleryMessage] = useState('')
-  const [dishRoundIndex, setDishRoundIndex] = useState(0)
-  const [revealedDishOwner, setRevealedDishOwner] = useState(false)
   const [icebreakerIndex, setIcebreakerIndex] = useState(0)
   const [triviaIndex, setTriviaIndex] = useState(0)
   const [responseFilter, setResponseFilter] = useState('')
@@ -163,9 +156,6 @@ export default function App() {
   const [hostCodeInput, setHostCodeInput] = useState('')
   const [hostUnlocked, setHostUnlocked] = useState(false)
   const [hostViewMessage, setHostViewMessage] = useState('')
-  const [sharedStatus, setSharedStatus] = useState(
-    isBackendConfigured() ? 'Shared backend connected.' : 'Backend not configured yet. Using local preview data.',
-  )
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -181,16 +171,10 @@ export default function App() {
         if (cancelled) return
         setSavedInvites(invites.map(toInviteRecord))
         setGallery(galleryItems)
-        setSharedStatus(sharedBackendEnabled ? 'Shared backend synced.' : 'Backend not configured yet. Using local preview data.')
       } catch (error) {
         if (cancelled) return
         setSavedInvites(sampleGuestPreview)
         setGallery([])
-        setSharedStatus(
-          error instanceof Error
-            ? `Shared backend unavailable: ${error.message}`
-            : 'Shared backend unavailable. Showing local preview data.',
-        )
       }
     }
 
@@ -213,9 +197,8 @@ export default function App() {
       const [invites, galleryItems] = await Promise.all([loadSharedInvites(), loadSharedGallery()])
       setSavedInvites(invites.map(toInviteRecord))
       setGallery(galleryItems)
-      setSharedStatus(sharedBackendEnabled ? 'Shared backend synced.' : 'Backend not configured yet. Using local preview data.')
-    } catch (error) {
-      setSharedStatus(error instanceof Error ? `Could not refresh shared data: ${error.message}` : 'Could not refresh shared data.')
+    } catch {
+      // Keep existing state if refresh fails.
     }
   }
 
@@ -310,16 +293,16 @@ export default function App() {
     setModeAndUrl('guest')
   }
 
-  async function loadInviteByCode(code: string) {
-    const normalized = code.trim().toUpperCase()
+  async function loadInviteByEmail(email: string) {
+    const normalized = email.trim().toLowerCase()
     if (!normalized) {
-      setInviteMessage('Enter a code to load an invite.')
+      setInviteMessage('Enter your email to load your response.')
       return
     }
 
-    const match = await findSharedInviteByCode(normalized)
+    const match = await findSharedInviteByEmail(normalized)
     if (!match) {
-      setInviteMessage('No invite found for that code yet.')
+      setInviteMessage('No existing response found for that email yet.')
       return
     }
 
@@ -332,24 +315,20 @@ export default function App() {
       triviaAnswerTwo: match.triviaAnswerTwo,
       notes: match.notes,
     })
-    setInviteCode(match.code)
-    setInviteMessage(`Loaded ${match.name}'s invite. Make changes and save again.`)
+    setInviteMessage(`Loaded your response. Make changes and save again.`)
   }
 
   function resetDraft() {
     setInviteDraft(emptyDraft)
-    setInviteCode('')
-    setInviteMessage('Ready for a new invite.')
+    setInviteMessage('Ready for a new response.')
   }
 
   async function handleInviteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    const existing = inviteCode
-      ? savedInvites.find((item) => item.code.toUpperCase() === inviteCode.trim().toUpperCase())
-      : undefined
+    const existing = savedInvites.find((item) => item.email.toLowerCase() === inviteDraft.email.trim().toLowerCase())
 
-    const nextCode = (existing?.code ?? inviteCode.trim().toUpperCase()) || createCode()
+    const nextCode = existing?.code || createCode()
 
     const nextInvite = await saveSharedInvite({
       id: existing?.id,
@@ -368,11 +347,10 @@ export default function App() {
       const filtered = current.filter((item) => item.id !== nextInvite.id)
       return [nextInvite, ...filtered].sort((left, right) => right.updatedAt - left.updatedAt)
     })
-    setInviteCode(nextInvite.code)
     setInviteMessage(
       sharedBackendEnabled
-        ? `Saved ${nextInvite.name}'s invite. Keep code ${nextInvite.code} to edit later.`
-        : `Saved locally for preview. Keep code ${nextInvite.code} to edit later.`,
+        ? 'Saved your response. You can return and edit anytime using your email.'
+        : 'Saved locally for preview. You can return and edit anytime using your email.',
     )
     if (sharedBackendEnabled) {
       await syncSharedData()
@@ -388,7 +366,6 @@ export default function App() {
       })),
     [visibleInvites],
   )
-  const activeRound = anonymizedInvites.length ? anonymizedInvites[dishRoundIndex % anonymizedInvites.length] : undefined
   const invitedGuestCount = useMemo(
     () => visibleInvites.reduce((total, invite) => total + 1 + Number(invite.plusOnes || 0), 0),
     [visibleInvites],
@@ -427,9 +404,9 @@ export default function App() {
           <div className="eyebrow">{eventInfo.theme}</div>
           <h1>{eventInfo.title}</h1>
           <p className="theme-script">Favorite Things - Year 12</p>
-          <p className="lede">{eventInfo.note}</p>
+          <p className="lede">Slip into your winter best and join us for a candlelit, ice-kissed night of laughter and favorite things.</p>
           <p className="intro-text">
-            Editable invites, shared anonymous responses, and a photo booth designed for a modern Glacier Soiree palette.
+            Think sparkling conversation, glowing tables, and playful trivia rounds all evening long.
           </p>
         </div>
         <div className="hero-grid">
@@ -446,10 +423,11 @@ export default function App() {
             <span className="meta-label">Where</span>
             <strong>{eventInfo.location}</strong>
           </div>
-          <div>
-            <span className="meta-label">Status</span>
-            <strong>{sharedStatus}</strong>
-          </div>
+        </div>
+        <div className="theme-ribbon" aria-label="Glacier Soiree theme visuals">
+          <img src="/theme-glacier-lounge.svg" alt="Icy blue lounge inspiration" />
+          <img src="/theme-frosted-table.svg" alt="Champagne candle table inspiration" />
+          <img src="/theme-winter-invite.svg" alt="Elegant winter invitation style inspiration" />
         </div>
       </section>
 
@@ -486,7 +464,6 @@ export default function App() {
         <article className="card accent-panel">
           <div className="section-header">
             <h2>How the party works</h2>
-            <span className="muted">Rules + counts pulled from the shared board.</span>
           </div>
           <ul className="rule-list">
             {giftRules.map((rule) => (
@@ -504,23 +481,10 @@ export default function App() {
         <article className="card">
           <div className="section-header">
             <h2>Invite editor</h2>
-            <span className="muted">Guests can update their invite with a saved code.</span>
+            <span className="muted">Return anytime and load your response with your email.</span>
           </div>
           <form className="stack form-grid" onSubmit={handleInviteSubmit}>
             <div className="split-grid">
-              <label>
-                Invite code
-                <div className="inline-actions">
-                  <input
-                    value={inviteCode}
-                    onChange={(event) => setInviteCode(event.target.value)}
-                    placeholder="Enter your code to edit later"
-                  />
-                  <button type="button" onClick={() => loadInviteByCode(inviteCode)}>
-                    Load
-                  </button>
-                </div>
-              </label>
               <label>
                 Name
                 <input
@@ -535,12 +499,17 @@ export default function App() {
             <div className="split-grid">
               <label>
                 Email
-                <input
-                  value={inviteDraft.email}
-                  onChange={(event) => handleDraftChange('email', event.target.value)}
-                  type="email"
-                  placeholder="you@example.com"
-                />
+                <div className="inline-actions">
+                  <input
+                    value={inviteDraft.email}
+                    onChange={(event) => handleDraftChange('email', event.target.value)}
+                    type="email"
+                    placeholder="you@example.com"
+                  />
+                  <button type="button" onClick={() => loadInviteByEmail(inviteDraft.email)}>
+                    Load mine
+                  </button>
+                </div>
               </label>
               <label>
                 Number coming
@@ -660,7 +629,7 @@ export default function App() {
                           <strong>{invite.name}</strong>
                           <p>{invite.email || 'No email added'}</p>
                         </div>
-                        <span className="code-pill">{invite.code}</span>
+                        <span className="code-pill">Host view</span>
                       </div>
                       <div className="guest-grid">
                         <div>
@@ -683,32 +652,16 @@ export default function App() {
 
         <article className="card">
           <div className="section-header">
-            <h2>Mystery response game</h2>
-            <span className="muted">Guess which anonymous guest profile submitted each answer.</span>
+            <h2>Trivia lounge</h2>
+            <span className="muted">Thought-provoking prompts for table conversation and mini rounds.</span>
           </div>
           <div className="game-card">
-            <span className="eyebrow">Round {anonymizedInvites.length ? (dishRoundIndex % anonymizedInvites.length) + 1 : 1}</span>
-            <h3>{activeRound?.alias ? 'Which anonymous guest posted this answer?' : 'Invite responses unlock the round'}</h3>
-            <p className="game-question">
-              {activeRound?.icebreakerAnswer || activeRound?.triviaAnswerOne || 'Have guests add answers so you can play this live.'}
-            </p>
-            {revealedDishOwner && activeRound ? (
-              <p className="reveal-line">
-                Answer: {showHostBoard ? `${activeRound.alias} (${activeRound.name})` : activeRound.alias}
-              </p>
-            ) : null}
+            <span className="eyebrow">Current prompt</span>
+            <h3>{triviaPrompts[triviaIndex % triviaPrompts.length]}</h3>
+            <p className="game-question">Pick a table winner, then post top responses to the anonymous board.</p>
             <div className="camera-actions invite-actions">
-              <button
-                type="button"
-                onClick={() => {
-                  setDishRoundIndex((current) => current + 1)
-                  setRevealedDishOwner(false)
-                }}
-              >
-                Next round
-              </button>
-              <button type="button" onClick={() => setRevealedDishOwner((current) => !current)} className="secondary-button">
-                {revealedDishOwner ? 'Hide answer' : 'Reveal anonymous profile'}
+              <button type="button" onClick={() => setTriviaIndex((current) => current + 1)}>
+                Next trivia prompt
               </button>
             </div>
           </div>
@@ -721,13 +674,6 @@ export default function App() {
               <button type="button" onClick={() => setIcebreakerIndex((current) => current + 1)}>
                 New icebreaker
               </button>
-              <button type="button" onClick={() => setTriviaIndex((current) => current + 1)}>
-                New trivia prompt
-              </button>
-            </div>
-            <div>
-              <span className="meta-label">Trivia prompt</span>
-              <p className="prompt">{triviaPrompts[triviaIndex % triviaPrompts.length]}</p>
             </div>
           </div>
         </article>
@@ -787,7 +733,7 @@ export default function App() {
           <video ref={videoRef} autoPlay playsInline muted className={`camera ${cameraReady ? 'live' : ''}`} />
           {capturedSrc ? (
             <div className="photo-preview">
-              <img src={capturedSrc} alt="Polaroid preview" />
+              <img src={capturedSrc} alt="Polaroid preview" className="polaroid-shot" />
               <div className="camera-actions">
                 <button type="button" onClick={savePolaroid}>Save photo</button>
                 <button type="button" onClick={() => addToGallery(capturedSrc)}>Add to gallery</button>
