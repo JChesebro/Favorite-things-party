@@ -145,14 +145,14 @@ function buildPolaroid(source: string, caption: string, adjustment: FrameAdjustm
         return
       }
 
-      context.fillStyle = '#f7f1e7'
+      context.fillStyle = '#f2f8ff'
       context.fillRect(0, 0, canvas.width, canvas.height)
 
       context.save()
       context.shadowColor = 'rgba(20, 38, 72, 0.24)'
       context.shadowBlur = 22
       context.shadowOffsetY = 18
-      context.fillStyle = '#fbf8f2'
+      context.fillStyle = '#ffffff'
       context.fillRect(86, 74, 1028, 1342)
       context.restore()
 
@@ -180,7 +180,7 @@ function buildPolaroid(source: string, caption: string, adjustment: FrameAdjustm
         context.fillText(line, 124, 1340 + index * 42)
       })
 
-      resolve(canvas.toDataURL('image/png'))
+      resolve(canvas.toDataURL('image/jpeg', 0.94))
     }
     image.onerror = reject
     image.crossOrigin = 'anonymous'
@@ -205,10 +205,10 @@ async function buildPhotoStrip(sources: string[], caption: string, adjustments: 
     throw new Error('Canvas unavailable')
   }
 
-  context.fillStyle = '#f7efe4'
+  context.fillStyle = '#f3f9ff'
   context.fillRect(0, 0, canvas.width, canvas.height)
 
-  context.fillStyle = '#fff7ee'
+  context.fillStyle = '#ffffff'
   context.fillRect(74, 48, 932, 1824)
 
   const frameX = 132
@@ -245,7 +245,7 @@ async function buildPhotoStrip(sources: string[], caption: string, adjustments: 
     context.fillText(line, 138, 1864)
   })
 
-  return canvas.toDataURL('image/png')
+  return canvas.toDataURL('image/jpeg', 0.94)
 }
 
 function wrapText(text: string, maxWidth: number, context: CanvasRenderingContext2D) {
@@ -556,9 +556,22 @@ export default function App() {
 
   async function downloadImage(src: string, filename: string) {
     try {
-      const response = await fetch(src)
-      if (!response.ok) throw new Error('Download failed')
-      const blob = await response.blob()
+      const image = await loadCanvasImage(src)
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth || image.width
+      canvas.height = image.naturalHeight || image.height
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('Canvas unavailable')
+      context.drawImage(image, 0, 0)
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((value) => {
+          if (!value) {
+            reject(new Error('Blob conversion failed'))
+            return
+          }
+          resolve(value)
+        }, 'image/jpeg', 0.92)
+      })
       const objectUrl = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = objectUrl
@@ -581,7 +594,7 @@ export default function App() {
     }
 
     for (const [index, item] of gallery.entries()) {
-      await downloadImage(item.src, `glacier-party-photo-${String(index + 1).padStart(2, '0')}.png`)
+      await downloadImage(item.src, `glacier-party-photo-${String(index + 1).padStart(2, '0')}.jpg`)
       await new Promise((resolve) => window.setTimeout(resolve, 140))
     }
 
@@ -621,7 +634,7 @@ export default function App() {
     if (!capturedSrc) return
     const link = document.createElement('a')
     link.href = capturedSrc
-    link.download = photoStyle === 'strip' ? 'glacier-soiree-photostrip.png' : 'glacier-soiree-polaroid.png'
+    link.download = photoStyle === 'strip' ? 'glacier-soiree-photostrip.jpg' : 'glacier-soiree-polaroid.jpg'
     link.click()
   }
 
@@ -1328,6 +1341,7 @@ export default function App() {
           </div>
         </div>
         <p className="muted">Add your caption directly under any photo, then vote on your favorites.</p>
+        {contestMessage ? <p className="status">{contestMessage}</p> : null}
         <div className="gallery">
           {galleryPreview.length ? (
             galleryPreview.map((item) => (
@@ -1342,7 +1356,7 @@ export default function App() {
                 <button
                   type="button"
                   className="secondary-button"
-                  onClick={() => downloadImage(item.src, `glacier-party-photo-${item.id}.png`)}
+                  onClick={() => downloadImage(item.src, `glacier-party-photo-${item.id}.jpg`)}
                 >
                   Download photo
                 </button>
@@ -1372,52 +1386,6 @@ export default function App() {
             <p className="muted">No photos yet. Add the first Polaroid to start the wall.</p>
           )}
         </div>
-      </section>
-
-      <section className="card card-icicle icicle-variant-2">
-        <div className="section-header">
-          <h2>Polaroid caption contest board</h2>
-          <span className="muted">Guests who RSVP yes can submit funny captions and vote favorites.</span>
-        </div>
-        {contestMessage ? <p className="status">{contestMessage}</p> : null}
-        {galleryPreview.length ? (
-          <div className="contest-grid">
-            {galleryPreview.map((item) => {
-              const entries = contestEntriesByPhoto[item.id] || []
-              return (
-                <article className="contest-card" key={`contest-${item.id}`}>
-                  <img src={item.src} alt={item.caption || 'Caption contest photo'} />
-                  <div className="contest-input-row">
-                    <input
-                      value={captionDrafts[item.id] || ''}
-                      onChange={(event) => handleCaptionDraftChange(item.id, event.target.value)}
-                      placeholder="Write a funny caption"
-                    />
-                    <button type="button" onClick={() => submitCaptionEntry(item.id)}>
-                      Submit
-                    </button>
-                  </div>
-                  <div className="contest-entries">
-                    {entries.length ? (
-                      entries.slice(0, 3).map((entry) => (
-                        <div className="contest-entry" key={entry.id}>
-                          <p>{entry.text}</p>
-                          <button type="button" className="secondary-button" onClick={() => voteForCaption(entry.id)}>
-                            Vote ({entry.votes})
-                          </button>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="muted">No captions yet for this photo.</p>
-                    )}
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-        ) : (
-          <p className="muted">Add photos to the gallery first, then launch the caption contest round.</p>
-        )}
       </section>
     </main>
   )
