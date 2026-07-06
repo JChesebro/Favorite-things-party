@@ -200,6 +200,57 @@ h2 {
   color: rgba(17, 43, 83, 0.82);
 }
 
+.view-control-card {
+  background:
+    linear-gradient(140deg, rgba(244, 250, 255, 0.92), rgba(255, 250, 241, 0.82));
+}
+
+.unlock-row {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.mode-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.mode-pills button {
+  box-shadow: none;
+}
+
+.pill-active {
+  background: linear-gradient(135deg, #0f3f86, #2d67be);
+}
+
+.response-columns {
+  display: grid;
+  gap: 1rem;
+}
+
+.response-columns.split {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.board-panel {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(32, 68, 127, 0.14);
+  border-radius: 22px;
+  padding: 0.9rem;
+}
+
+.board-panel h3 {
+  margin: 0.1rem 0 0.8rem;
+}
+
+.board-panel-host {
+  border-color: rgba(214, 176, 101, 0.35);
+  background: linear-gradient(145deg, rgba(255, 250, 241, 0.8), rgba(241, 248, 255, 0.9));
+}
+
 .intro-text {
   margin: 0;
   max-width: 70ch;
@@ -490,6 +541,10 @@ h3 {
   }
 
   .inline-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .unlock-row {
     grid-template-columns: 1fr;
   }
 }
