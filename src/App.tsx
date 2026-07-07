@@ -1028,34 +1028,6 @@ export default function App() {
             </section>
           </div>
         </article>
-
-        <article className="card card-icicle icicle-variant-4">
-          <div className="section-header">
-            <h2>Trivia lounge</h2>
-            <span className="muted">Thought-provoking prompts for table conversation and mini rounds.</span>
-          </div>
-          <div className="game-card">
-            <span className="eyebrow">Current prompt</span>
-            <h3>{triviaPrompts[triviaIndex % triviaPrompts.length]}</h3>
-            <p className="game-question">Pick a table winner, then post top responses to the anonymous board.</p>
-            <div className="camera-actions invite-actions">
-              <button type="button" onClick={() => setTriviaIndex((current) => current + 1)}>
-                Next trivia prompt
-              </button>
-            </div>
-          </div>
-          <div className="prompt-stack">
-            <div>
-              <span className="meta-label">Icebreaker prompt</span>
-              <p className="prompt">{icebreakerPrompts[icebreakerIndex % icebreakerPrompts.length]}</p>
-            </div>
-            <div className="section-header compact-header">
-              <button type="button" onClick={() => setIcebreakerIndex((current) => current + 1)}>
-                New icebreaker
-              </button>
-            </div>
-          </div>
-        </article>
       </section>
 
       <section className="grid two-up">
