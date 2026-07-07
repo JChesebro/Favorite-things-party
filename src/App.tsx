@@ -1328,7 +1328,7 @@ export default function App() {
 
       <section className="card">
         <div className="section-header">
-          <h2>Shared gallery + caption contest</h2>
+          <h2>Gallery + vote</h2>
           <div className="gallery-actions">
             <button type="button" onClick={syncSharedData} className="secondary-button">
               Refresh shared data
