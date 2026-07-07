@@ -830,20 +830,7 @@ export default function App() {
         )
       })
     : anonymizedInvites
-  const hostFilteredResponses = responseFilter
-    ? visibleInvites.filter((invite) => {
-        const query = responseFilter.toLowerCase()
-        return (
-          invite.name.toLowerCase().includes(query) ||
-          invite.email.toLowerCase().includes(query) ||
-          invite.icebreakerAnswer.toLowerCase().includes(query) ||
-          invite.triviaAnswerOne.toLowerCase().includes(query) ||
-          invite.triviaAnswerTwo.toLowerCase().includes(query)
-        )
-      })
-    : visibleInvites
-  const showHostBoard = hostUnlocked && (viewMode === 'host' || viewMode === 'split')
-  const showGuestBoard = !hostUnlocked || viewMode === 'guest' || viewMode === 'split'
+  const attendeeNames = useMemo(() => visibleInvites.map((invite) => invite.name).filter(Boolean), [visibleInvites])
 
   return (
     <main className="page-shell">
@@ -878,35 +865,6 @@ export default function App() {
         </div>
       </section>
 
-      <section className="card view-control-card">
-        <div className="section-header">
-          <h2>View controls</h2>
-          <span className="muted">Host mode lets you preview private details and split-screen compare.</span>
-        </div>
-        {!hostUnlocked ? (
-          <div className="unlock-row">
-            <label>
-              Host code
-              <input
-                type="password"
-                value={hostCodeInput}
-                onChange={(event) => setHostCodeInput(event.target.value)}
-                placeholder="Enter host code"
-              />
-            </label>
-            <button type="button" onClick={unlockHostView}>Unlock host view</button>
-          </div>
-        ) : (
-          <div className="mode-pills">
-            <button type="button" onClick={() => setModeAndUrl('guest')} className={viewMode === 'guest' ? 'pill-active' : ''}>Guest view</button>
-            <button type="button" onClick={() => setModeAndUrl('host')} className={viewMode === 'host' ? 'pill-active' : ''}>Host view</button>
-            <button type="button" onClick={() => setModeAndUrl('split')} className={viewMode === 'split' ? 'pill-active' : ''}>Split view</button>
-            <button type="button" onClick={relockHostView} className="secondary-button">Lock</button>
-          </div>
-        )}
-        {hostViewMessage ? <p className="status">{hostViewMessage}</p> : null}
-      </section>
-
       <section className="grid two-up">
         <article className="card accent-panel card-icicle icicle-variant-1">
           <div className="section-header">
@@ -918,10 +876,10 @@ export default function App() {
               <li key={rule}>{rule}</li>
             ))}
           </ul>
-          <div className="stat-row">
-            <div>
-              <span className="meta-label">Estimated guests</span>
-              <strong>{invitedGuestCount}</strong>
+          <div className="coming-row">
+            <span className="meta-label">Who is coming</span>
+            <div className="coming-list">
+              {attendeeNames.length ? attendeeNames.map((name) => <span key={name}>{name}</span>) : <span>No RSVPs yet</span>}
             </div>
           </div>
         </article>
@@ -973,31 +931,40 @@ export default function App() {
             <div className="split-grid">
               <label>
                 Icebreaker answer
+                <span className="meta-label">Question: {icebreakerPrompts[icebreakerIndex % icebreakerPrompts.length]}</span>
                 <textarea
                   value={inviteDraft.icebreakerAnswer}
                   onChange={(event) => handleDraftChange('icebreakerAnswer', event.target.value)}
                   rows={3}
-                  placeholder="Your quick answer to the current icebreaker"
+                  placeholder="Answer this icebreaker right here"
                 />
+                <button type="button" className="secondary-button" onClick={() => setIcebreakerIndex((current) => current + 1)}>
+                  New icebreaker question
+                </button>
               </label>
               <label>
                 Trivia answer 1
+                <span className="meta-label">Question: {triviaPrompts[triviaIndex % triviaPrompts.length]}</span>
                 <textarea
                   value={inviteDraft.triviaAnswerOne}
                   onChange={(event) => handleDraftChange('triviaAnswerOne', event.target.value)}
                   rows={3}
-                  placeholder="Answer to the first trivia prompt"
+                  placeholder="Answer this trivia question here"
                 />
+                <button type="button" className="secondary-button" onClick={() => setTriviaIndex((current) => current + 1)}>
+                  New trivia question
+                </button>
               </label>
             </div>
             <div className="split-grid">
               <label>
                 Trivia answer 2
+                <span className="meta-label">Question: {triviaPrompts[(triviaIndex + 1) % triviaPrompts.length]}</span>
                 <textarea
                   value={inviteDraft.triviaAnswerTwo}
                   onChange={(event) => handleDraftChange('triviaAnswerTwo', event.target.value)}
                   rows={3}
-                  placeholder="Answer to the second trivia prompt"
+                  placeholder="Answer this trivia question here"
                 />
               </label>
               <label>
@@ -1024,77 +991,41 @@ export default function App() {
       <section className="grid two-up">
         <article className="card card-icicle icicle-variant-3">
           <div className="section-header">
-            <h2>{showGuestBoard && showHostBoard ? 'Response boards' : showHostBoard ? 'Host response board' : 'Anonymous response board'}</h2>
+            <h2>Anonymous answers board</h2>
             <label className="mini-filter">
               Filter responses
               <input value={responseFilter} onChange={(event) => setResponseFilter(event.target.value)} placeholder="Search answers" />
             </label>
           </div>
-          <p className="muted">
-            {showHostBoard
-              ? 'Host board reveals names and codes only after unlock. Guest board remains anonymized.'
-              : 'Guest board displays anonymized responses only.'}
-          </p>
-          <div className={`response-columns ${showGuestBoard && showHostBoard ? 'split' : ''}`}>
-            {showGuestBoard ? (
-              <section className="board-panel">
-                <h3>Guest-safe board</h3>
-                <div className="guest-board">
-                  {filteredResponses.map((invite) => (
-                    <article className="guest-card" key={`guest-${invite.id}`}>
-                      <div className="guest-card-top">
-                        <div>
-                          <strong>{invite.alias}</strong>
-                          <p>{1 + Number(invite.plusOnes || 0)} coming</p>
-                        </div>
-                        <span className="code-pill">Anonymous</span>
+          <p className="muted">Submitted answers appear here automatically with anonymous labels.</p>
+          <div className="response-columns">
+            <section className="board-panel">
+              <h3>Latest responses</h3>
+              <div className="guest-board">
+                {filteredResponses.map((invite) => (
+                  <article className="guest-card" key={`guest-${invite.id}`}>
+                    <div className="guest-card-top">
+                      <div>
+                        <strong>{invite.alias}</strong>
+                        <p>{1 + Number(invite.plusOnes || 0)} coming</p>
                       </div>
-                      <div className="guest-grid">
-                        <div>
-                          <span className="meta-label">Icebreaker</span>
-                          <p>{invite.icebreakerAnswer || 'Not answered yet'}</p>
-                        </div>
-                        <div>
-                          <span className="meta-label">Trivia answers</span>
-                          <p>{invite.triviaAnswerOne || 'Not answered yet'}</p>
-                          <p>{invite.triviaAnswerTwo || ''}</p>
-                        </div>
+                      <span className="code-pill">Anonymous</span>
+                    </div>
+                    <div className="guest-grid">
+                      <div>
+                        <span className="meta-label">Icebreaker</span>
+                        <p>{invite.icebreakerAnswer || 'Not answered yet'}</p>
                       </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            {showHostBoard ? (
-              <section className="board-panel board-panel-host">
-                <h3>Host board</h3>
-                <div className="guest-board">
-                  {hostFilteredResponses.map((invite) => (
-                    <article className="guest-card" key={`host-${invite.id}`}>
-                      <div className="guest-card-top">
-                        <div>
-                          <strong>{invite.name}</strong>
-                          <p>{invite.email || 'No email added'}</p>
-                        </div>
-                        <span className="code-pill">Host view</span>
+                      <div>
+                        <span className="meta-label">Trivia answers</span>
+                        <p>{invite.triviaAnswerOne || 'Not answered yet'}</p>
+                        <p>{invite.triviaAnswerTwo || ''}</p>
                       </div>
-                      <div className="guest-grid">
-                        <div>
-                          <span className="meta-label">Icebreaker</span>
-                          <p>{invite.icebreakerAnswer || 'Not answered yet'}</p>
-                        </div>
-                        <div>
-                          <span className="meta-label">Trivia answers</span>
-                          <p>{invite.triviaAnswerOne || 'Not answered yet'}</p>
-                          <p>{invite.triviaAnswerTwo || ''}</p>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ) : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
           </div>
         </article>
 
@@ -1333,11 +1264,9 @@ export default function App() {
             <button type="button" onClick={syncSharedData} className="secondary-button">
               Refresh shared data
             </button>
-            {hostUnlocked ? (
-              <button type="button" onClick={downloadAllGalleryPhotos} className="secondary-button">
-                Download all photos
-              </button>
-            ) : null}
+            <button type="button" onClick={downloadAllGalleryPhotos} className="secondary-button">
+              Download all photos
+            </button>
           </div>
         </div>
         <p className="muted">Add your caption directly under any photo, then vote on your favorites.</p>

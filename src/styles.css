@@ -448,6 +448,26 @@ h3 {
   gap: 0.7rem;
 }
 
+.coming-row {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.coming-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.coming-list span {
+  padding: 0.38rem 0.68rem;
+  border-radius: 999px;
+  background: rgba(255, 238, 199, 0.2);
+  border: 1px solid rgba(255, 233, 180, 0.28);
+  font-size: 0.82rem;
+}
+
 .stat-row {
   margin-top: 1.2rem;
   display: grid;
