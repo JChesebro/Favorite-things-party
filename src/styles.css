@@ -285,6 +285,7 @@ h3 {
 .card-icicle {
   position: relative;
   overflow: hidden;
+  padding-top: clamp(2.3rem, 4vw, 2.9rem);
 }
 
 .card-icicle::before {
@@ -468,6 +469,10 @@ h3 {
   font-size: 0.82rem;
 }
 
+.party-games-link {
+  width: fit-content;
+}
+
 .stat-row {
   margin-top: 1.2rem;
   display: grid;
@@ -525,6 +530,23 @@ h3 {
 
 .guest-grid {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.responses-by-question {
+  gap: 1rem;
+}
+
+.question-line {
+  margin: 0.35rem 0 0.65rem;
+  color: #113161;
+  font-weight: 600;
+}
+
+.answer-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.4rem;
 }
 
 .prompt-stack {

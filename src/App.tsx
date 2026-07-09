@@ -441,7 +441,7 @@ export default function App() {
         setGallery(galleryItems)
       } catch (error) {
         if (cancelled) return
-        setSavedInvites(sampleGuestPreview)
+        setSavedInvites([])
         setGallery([])
       }
     }
@@ -768,7 +768,7 @@ export default function App() {
       icebreakerAnswer: inviteDraft.icebreakerAnswer.trim(),
       triviaAnswerOne: inviteDraft.triviaAnswerOne.trim(),
       triviaAnswerTwo: inviteDraft.triviaAnswerTwo.trim(),
-      notes: inviteDraft.notes.trim(),
+      notes: '',
     })
 
     setSavedInvites((current) => {
@@ -785,7 +785,7 @@ export default function App() {
     }
   }
 
-  const visibleInvites = savedInvites.length ? savedInvites : sampleGuestPreview
+  const visibleInvites = savedInvites
   const anonymizedInvites = useMemo(
     () =>
       visibleInvites.map((invite, index) => ({
@@ -830,7 +830,72 @@ export default function App() {
         )
       })
     : anonymizedInvites
-  const attendeeNames = useMemo(() => visibleInvites.map((invite) => invite.name).filter(Boolean), [visibleInvites])
+  const attendeeNames = useMemo(
+    () => Array.from(new Set(visibleInvites.map((invite) => invite.name.trim()).filter(Boolean))),
+    [visibleInvites],
+  )
+  const icebreakerResponses = useMemo(
+    () => visibleInvites.map((invite) => invite.icebreakerAnswer.trim()).filter(Boolean),
+    [visibleInvites],
+  )
+  const triviaOneResponses = useMemo(
+    () => visibleInvites.map((invite) => invite.triviaAnswerOne.trim()).filter(Boolean),
+    [visibleInvites],
+  )
+  const triviaTwoResponses = useMemo(
+    () => visibleInvites.map((invite) => invite.triviaAnswerTwo.trim()).filter(Boolean),
+    [visibleInvites],
+  )
+  const gamesUrl =
+    typeof window === 'undefined' ? '?tab=games' : `${window.location.origin}${window.location.pathname}?tab=games`
+  const partyUrl =
+    typeof window === 'undefined' ? '/' : `${window.location.origin}${window.location.pathname}${window.location.search.replace(/\?tab=games/, '')}`
+  const isGamesTab = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'games'
+
+  if (isGamesTab) {
+    return (
+      <main className="page-shell">
+        <section className="card">
+          <div className="section-header">
+            <h2>Party Games</h2>
+            <a className="secondary-button" href={partyUrl}>Back to party</a>
+          </div>
+          <div className="idea-grid">
+            <article className="game-card">
+              <span className="eyebrow">Superlatives poll</span>
+              <h3>{superlativePollPrompts[superlativeIndex % superlativePollPrompts.length]}</h3>
+              <p className="game-question">Guests vote live or the host can tally by show of hands.</p>
+              <div className="camera-actions invite-actions">
+                <button type="button" onClick={() => setSuperlativeIndex((current) => current + 1)}>
+                  Next superlative
+                </button>
+              </div>
+            </article>
+            <article className="game-card">
+              <span className="eyebrow">Two truths and a favorite</span>
+              <h3>{twoTruthsAndFavoritePrompts[twoTruthsIndex % twoTruthsAndFavoritePrompts.length]}</h3>
+              <p className="game-question">Each guest shares two true favorites and one fake favorite. Everyone guesses the fake.</p>
+              <div className="camera-actions invite-actions">
+                <button type="button" onClick={() => setTwoTruthsIndex((current) => current + 1)}>
+                  Next two truths prompt
+                </button>
+              </div>
+            </article>
+            <article className="game-card">
+              <span className="eyebrow">Polaroid caption contest</span>
+              <h3>{polaroidCaptionContestPrompts[captionContestIndex % polaroidCaptionContestPrompts.length]}</h3>
+              <p className="game-question">Guests pin up their photo with a funny caption. Crowd vote decides the winner.</p>
+              <div className="camera-actions invite-actions">
+                <button type="button" onClick={() => setCaptionContestIndex((current) => current + 1)}>
+                  Next caption prompt
+                </button>
+              </div>
+            </article>
+          </div>
+        </section>
+      </main>
+    )
+  }
 
   return (
     <main className="page-shell">
@@ -881,12 +946,15 @@ export default function App() {
             <div className="coming-list">
               {attendeeNames.length ? attendeeNames.map((name) => <span key={name}>{name}</span>) : <span>No RSVPs yet</span>}
             </div>
+            <a className="secondary-button party-games-link" href={gamesUrl} target="_blank" rel="noreferrer">
+              Party Games
+            </a>
           </div>
         </article>
 
         <article className="card card-icicle icicle-variant-2">
           <div className="section-header">
-            <h2>Invite editor</h2>
+            <h2>RSVP</h2>
             <span className="muted">Return anytime and load your response with your email.</span>
           </div>
           <form className="stack form-grid" onSubmit={handleInviteSubmit}>
@@ -928,7 +996,7 @@ export default function App() {
                 />
               </label>
             </div>
-            <div className="split-grid">
+            <div className="form-grid">
               <label>
                 Icebreaker answer
                 <span className="meta-label">Question: {icebreakerPrompts[icebreakerIndex % icebreakerPrompts.length]}</span>
@@ -955,8 +1023,6 @@ export default function App() {
                   New trivia question
                 </button>
               </label>
-            </div>
-            <div className="split-grid">
               <label>
                 Trivia answer 2
                 <span className="meta-label">Question: {triviaPrompts[(triviaIndex + 1) % triviaPrompts.length]}</span>
@@ -965,15 +1031,6 @@ export default function App() {
                   onChange={(event) => handleDraftChange('triviaAnswerTwo', event.target.value)}
                   rows={3}
                   placeholder="Answer this trivia question here"
-                />
-              </label>
-              <label>
-                Notes
-                <textarea
-                  value={inviteDraft.notes}
-                  onChange={(event) => handleDraftChange('notes', event.target.value)}
-                  rows={3}
-                  placeholder="Dietary notes, timing, or anything else we should know"
                 />
               </label>
             </div>
@@ -991,85 +1048,57 @@ export default function App() {
       <section className="grid two-up">
         <article className="card card-icicle icicle-variant-3">
           <div className="section-header">
-            <h2>Anonymous answers board</h2>
+            <h2>Guest Trivia / Icebreaker responses</h2>
             <label className="mini-filter">
               Filter responses
               <input value={responseFilter} onChange={(event) => setResponseFilter(event.target.value)} placeholder="Search answers" />
             </label>
           </div>
-          <p className="muted">Submitted answers appear here automatically with anonymous labels.</p>
+          <p className="muted">Each question lists every submitted answer for guests to read.</p>
           <div className="response-columns">
             <section className="board-panel">
-              <h3>Latest responses</h3>
-              <div className="guest-board">
-                {filteredResponses.map((invite) => (
-                  <article className="guest-card" key={`guest-${invite.id}`}>
-                    <div className="guest-card-top">
-                      <div>
-                        <strong>{invite.alias}</strong>
-                        <p>{1 + Number(invite.plusOnes || 0)} coming</p>
-                      </div>
-                      <span className="code-pill">Anonymous</span>
-                    </div>
-                    <div className="guest-grid">
-                      <div>
-                        <span className="meta-label">Icebreaker</span>
-                        <p>{invite.icebreakerAnswer || 'Not answered yet'}</p>
-                      </div>
-                      <div>
-                        <span className="meta-label">Trivia answers</span>
-                        <p>{invite.triviaAnswerOne || 'Not answered yet'}</p>
-                        <p>{invite.triviaAnswerTwo || ''}</p>
-                      </div>
-                    </div>
-                  </article>
-                ))}
+              <h3>Question responses</h3>
+              <div className="guest-board responses-by-question">
+                <article className="guest-card">
+                  <span className="meta-label">Icebreaker question</span>
+                  <p className="question-line">{icebreakerPrompts[icebreakerIndex % icebreakerPrompts.length]}</p>
+                  {icebreakerResponses.length ? (
+                    <ul className="answer-list">
+                      {icebreakerResponses.map((answer, index) => <li key={`ice-${index}`}>{answer}</li>)}
+                    </ul>
+                  ) : (
+                    <p>No responses yet.</p>
+                  )}
+                </article>
+                <article className="guest-card">
+                  <span className="meta-label">Trivia question 1</span>
+                  <p className="question-line">{triviaPrompts[triviaIndex % triviaPrompts.length]}</p>
+                  {triviaOneResponses.length ? (
+                    <ul className="answer-list">
+                      {triviaOneResponses.map((answer, index) => <li key={`trivia-one-${index}`}>{answer}</li>)}
+                    </ul>
+                  ) : (
+                    <p>No responses yet.</p>
+                  )}
+                </article>
+                <article className="guest-card">
+                  <span className="meta-label">Trivia question 2</span>
+                  <p className="question-line">{triviaPrompts[(triviaIndex + 1) % triviaPrompts.length]}</p>
+                  {triviaTwoResponses.length ? (
+                    <ul className="answer-list">
+                      {triviaTwoResponses.map((answer, index) => <li key={`trivia-two-${index}`}>{answer}</li>)}
+                    </ul>
+                  ) : (
+                    <p>No responses yet.</p>
+                  )}
+                </article>
               </div>
             </section>
           </div>
         </article>
       </section>
 
-      <section className="grid two-up">
-        <article className="card">
-          <div className="section-header">
-            <h2>Guest spotlight games</h2>
-            <span className="muted">For guests who RSVP yes. Kind prompts only.</span>
-          </div>
-          <div className="idea-grid">
-            <article className="game-card">
-              <span className="eyebrow">Superlatives poll</span>
-              <h3>{superlativePollPrompts[superlativeIndex % superlativePollPrompts.length]}</h3>
-              <p className="game-question">Guests vote live or the host can tally by show of hands.</p>
-              <div className="camera-actions invite-actions">
-                <button type="button" onClick={() => setSuperlativeIndex((current) => current + 1)}>
-                  Next superlative
-                </button>
-              </div>
-            </article>
-            <article className="game-card">
-              <span className="eyebrow">Two truths and a favorite</span>
-              <h3>{twoTruthsAndFavoritePrompts[twoTruthsIndex % twoTruthsAndFavoritePrompts.length]}</h3>
-              <p className="game-question">Each guest shares two true favorites and one fake favorite. Everyone guesses the fake.</p>
-              <div className="camera-actions invite-actions">
-                <button type="button" onClick={() => setTwoTruthsIndex((current) => current + 1)}>
-                  Next two truths prompt
-                </button>
-              </div>
-            </article>
-            <article className="game-card">
-              <span className="eyebrow">Polaroid caption contest</span>
-              <h3>{polaroidCaptionContestPrompts[captionContestIndex % polaroidCaptionContestPrompts.length]}</h3>
-              <p className="game-question">Guests pin up their photo with a funny caption. Crowd vote decides the winner.</p>
-              <div className="camera-actions invite-actions">
-                <button type="button" onClick={() => setCaptionContestIndex((current) => current + 1)}>
-                  Next caption prompt
-                </button>
-              </div>
-            </article>
-          </div>
-        </article>
-
+      <section>
         <article className="card photo-card card-icicle icicle-variant-5">
           <div className="section-header">
             <h2>Photo booth</h2>
