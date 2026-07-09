@@ -703,17 +703,6 @@ export default function App() {
     [visibleInvites],
   )
   const galleryPreview = useMemo(() => gallery.slice(0, 12), [gallery])
-  const filteredResponses = responseFilter
-    ? anonymizedInvites.filter((invite) => {
-        const query = responseFilter.toLowerCase()
-        return (
-          invite.alias.toLowerCase().includes(query) ||
-          invite.icebreakerAnswer.toLowerCase().includes(query) ||
-          invite.triviaAnswerOne.toLowerCase().includes(query) ||
-          invite.triviaAnswerTwo.toLowerCase().includes(query)
-        )
-      })
-    : anonymizedInvites
   const attendeeNames = useMemo(
     () => Array.from(new Set(visibleInvites.map((invite) => invite.name.trim()).filter(Boolean))),
     [visibleInvites],
@@ -724,10 +713,6 @@ export default function App() {
   )
   const triviaOneResponses = useMemo(
     () => visibleInvites.map((invite) => invite.triviaAnswerOne.trim()).filter(Boolean),
-    [visibleInvites],
-  )
-  const triviaTwoResponses = useMemo(
-    () => visibleInvites.map((invite) => invite.triviaAnswerTwo.trim()).filter(Boolean),
     [visibleInvites],
   )
   const gamesUrl =
