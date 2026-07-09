@@ -26,14 +26,6 @@ type GalleryItem = {
   createdAt: number
 }
 
-type CaptionContestEntry = {
-  id: string
-  photoId: string
-  text: string
-  votes: number
-  createdAt: number
-}
-
 type InviteRecord = {
   id: string
   code: string
@@ -57,8 +49,6 @@ type FrameAdjustment = {
 }
 
 const ownedGalleryIdsStorageKey = 'glacier-owned-gallery-ids'
-const captionContestEntriesStorageKey = 'glacier-caption-contest-entries'
-const captionContestVotesStorageKey = 'glacier-caption-contest-votes'
 const defaultFrameAdjustment: FrameAdjustment = {
   zoom: 1,
   offsetX: 0,
@@ -292,39 +282,6 @@ export default function App() {
   const [twoTruthsIndex, setTwoTruthsIndex] = useState(0)
   const [captionContestIndex, setCaptionContestIndex] = useState(0)
   const [photoStyle, setPhotoStyle] = useState<PhotoStyle>('polaroid')
-  const [captionDrafts, setCaptionDrafts] = useState<Record<string, string>>({})
-  const [contestMessage, setContestMessage] = useState('')
-  const [captionContestEntries, setCaptionContestEntries] = useState<CaptionContestEntry[]>(() => {
-    if (typeof window === 'undefined') return []
-    try {
-      const saved = window.localStorage.getItem(captionContestEntriesStorageKey)
-      if (!saved) return []
-      const parsed = JSON.parse(saved)
-      if (!Array.isArray(parsed)) return []
-      return parsed.filter(
-        (item): item is CaptionContestEntry =>
-          item &&
-          typeof item.id === 'string' &&
-          typeof item.photoId === 'string' &&
-          typeof item.text === 'string' &&
-          typeof item.votes === 'number' &&
-          typeof item.createdAt === 'number',
-      )
-    } catch {
-      return []
-    }
-  })
-  const [votedCaptionEntryIds, setVotedCaptionEntryIds] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return []
-    try {
-      const saved = window.localStorage.getItem(captionContestVotesStorageKey)
-      if (!saved) return []
-      const parsed = JSON.parse(saved)
-      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []
-    } catch {
-      return []
-    }
-  })
   const [ownedGalleryIds, setOwnedGalleryIds] = useState<string[]>(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -355,16 +312,6 @@ export default function App() {
     if (typeof window === 'undefined') return
     window.localStorage.setItem(ownedGalleryIdsStorageKey, JSON.stringify(ownedGalleryIds))
   }, [ownedGalleryIds])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(captionContestEntriesStorageKey, JSON.stringify(captionContestEntries))
-  }, [captionContestEntries])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(captionContestVotesStorageKey, JSON.stringify(votedCaptionEntryIds))
-  }, [votedCaptionEntryIds])
 
   useEffect(() => {
     if (photoStyle === 'polaroid') {
@@ -638,48 +585,6 @@ export default function App() {
     link.click()
   }
 
-  function handleCaptionDraftChange(photoId: string, value: string) {
-    setCaptionDrafts((current) => ({
-      ...current,
-      [photoId]: value,
-    }))
-  }
-
-  function submitCaptionEntry(photoId: string) {
-    const draft = (captionDrafts[photoId] || '').trim()
-    if (!draft) {
-      setContestMessage('Add a caption before submitting.')
-      return
-    }
-
-    const nextEntry: CaptionContestEntry = {
-      id: crypto.randomUUID(),
-      photoId,
-      text: draft,
-      votes: 0,
-      createdAt: Date.now(),
-    }
-
-    setCaptionContestEntries((current) => [nextEntry, ...current])
-    setCaptionDrafts((current) => ({
-      ...current,
-      [photoId]: '',
-    }))
-    setContestMessage('Caption submitted to the contest board.')
-  }
-
-  function voteForCaption(entryId: string) {
-    if (votedCaptionEntryIds.includes(entryId)) {
-      setContestMessage('You already voted for that caption from this browser.')
-      return
-    }
-
-    setCaptionContestEntries((current) =>
-      current.map((entry) => (entry.id === entryId ? { ...entry, votes: entry.votes + 1 } : entry)),
-    )
-    setVotedCaptionEntryIds((current) => [...current, entryId])
-    setContestMessage('Vote counted.')
-  }
 
   function handleDraftChange(field: keyof InviteDraft, value: string | number) {
     setInviteDraft((current) => ({ ...current, [field]: value }))
@@ -799,26 +704,6 @@ export default function App() {
     [visibleInvites],
   )
   const galleryPreview = useMemo(() => gallery.slice(0, 12), [gallery])
-  const contestPhotoIds = useMemo(() => galleryPreview.map((item) => item.id), [galleryPreview])
-  const contestEntriesByPhoto = useMemo(() => {
-    const grouped: Record<string, CaptionContestEntry[]> = {}
-    captionContestEntries.forEach((entry) => {
-      if (!contestPhotoIds.includes(entry.photoId)) return
-      const existingEntries = grouped[entry.photoId] ?? []
-      grouped[entry.photoId] = [...existingEntries, entry]
-    })
-
-    Object.keys(grouped).forEach((photoId) => {
-      const entries = grouped[photoId]
-      if (!entries) return
-      entries.sort((left, right) => {
-        if (right.votes === left.votes) return right.createdAt - left.createdAt
-        return right.votes - left.votes
-      })
-    })
-
-    return grouped
-  }, [captionContestEntries, contestPhotoIds])
   const filteredResponses = responseFilter
     ? anonymizedInvites.filter((invite) => {
         const query = responseFilter.toLowerCase()
@@ -1112,7 +997,7 @@ export default function App() {
             </select>
           </label>
           <label>
-            Print caption
+            Submit a Funny Caption
             <input
               value={galleryCaption}
               onChange={(event) => setGalleryCaption(event.target.value)}
@@ -1260,7 +1145,7 @@ export default function App() {
 
       <section className="card">
         <div className="section-header">
-          <h2>Gallery + vote</h2>
+          <h2>Gallery</h2>
           <div className="gallery-actions">
             <button type="button" onClick={syncSharedData} className="secondary-button">
               Refresh shared data
@@ -1270,8 +1155,7 @@ export default function App() {
             </button>
           </div>
         </div>
-        <p className="muted">Add your caption directly under any photo, then vote on your favorites.</p>
-        {contestMessage ? <p className="status">{contestMessage}</p> : null}
+        <p className="muted">Guests can download any photo, and uploaders can remove only their own photos.</p>
         <div className="gallery">
           {galleryPreview.length ? (
             galleryPreview.map((item) => (
@@ -1290,26 +1174,6 @@ export default function App() {
                 >
                   Download photo
                 </button>
-                <div className="contest-input-row">
-                  <input
-                    value={captionDrafts[item.id] || ''}
-                    onChange={(event) => handleCaptionDraftChange(item.id, event.target.value)}
-                    placeholder="Write a funny caption"
-                  />
-                  <button type="button" onClick={() => submitCaptionEntry(item.id)}>
-                    Submit caption
-                  </button>
-                </div>
-                <div className="contest-entries">
-                  {(contestEntriesByPhoto[item.id] || []).slice(0, 3).map((entry) => (
-                    <div className="contest-entry" key={`gallery-entry-${entry.id}`}>
-                      <p>{entry.text}</p>
-                      <button type="button" className="secondary-button" onClick={() => voteForCaption(entry.id)}>
-                        Vote ({entry.votes})
-                      </button>
-                    </div>
-                  ))}
-                </div>
               </article>
             ))
           ) : (
