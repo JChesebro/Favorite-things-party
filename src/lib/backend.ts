@@ -1,4 +1,4 @@
-/// <reference types="vite/client" />
+/// <reference path="../env.d.ts" />
 
 import { sampleGuestPreview } from '../data'
 
@@ -42,11 +42,10 @@ type GalleryInput = {
   caption: string
 }
 
-const env = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env
-const supabaseUrl = env.VITE_SUPABASE_URL as string | undefined
-const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY as string | undefined
-const invitesTable = env.VITE_SUPABASE_INVITES_TABLE || 'guest_invites'
-const galleryTable = env.VITE_SUPABASE_GALLERY_TABLE || 'gallery_entries'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+const invitesTable = import.meta.env.VITE_SUPABASE_INVITES_TABLE || 'guest_invites'
+const galleryTable = import.meta.env.VITE_SUPABASE_GALLERY_TABLE || 'gallery_entries'
 const localInvitesKey = 'glacier-local-invites'
 const localGalleryKey = 'glacier-local-gallery'
 
