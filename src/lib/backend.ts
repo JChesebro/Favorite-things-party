@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import { sampleGuestPreview } from '../data'
 
 export type GalleryRecord = {
@@ -40,14 +42,74 @@ type GalleryInput = {
   caption: string
 }
 
-const env = import.meta.env
+const env = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env
 const supabaseUrl = env.VITE_SUPABASE_URL as string | undefined
 const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY as string | undefined
 const invitesTable = env.VITE_SUPABASE_INVITES_TABLE || 'guest_invites'
 const galleryTable = env.VITE_SUPABASE_GALLERY_TABLE || 'gallery_entries'
+const localInvitesKey = 'glacier-local-invites'
+const localGalleryKey = 'glacier-local-gallery'
+
+type LocalInvitePreview = {
+  id: string
+  code: string
+  name: string
+  email: string
+  plusOnes: number
+  bringingDish: string
+  favoriteThing: string
+  icebreakerAnswer: string
+  triviaAnswerOne: string
+  triviaAnswerTwo: string
+  notes: string
+  updatedAt: number
+}
+
+type LocalGalleryPreview = {
+  id: string
+  src: string
+  caption: string
+  createdAt: number
+}
 
 function hasBackend() {
   return Boolean(supabaseUrl && supabaseAnonKey)
+}
+
+function readLocalJson<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback
+  try {
+    const raw = window.localStorage.getItem(key)
+    if (!raw) return fallback
+    return JSON.parse(raw) as T
+  } catch {
+    return fallback
+  }
+}
+
+function writeLocalJson<T>(key: string, value: T) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // Ignore storage errors and continue in memory-only mode.
+  }
+}
+
+function getLocalInvites() {
+  return readLocalJson<LocalInvitePreview[]>(localInvitesKey, sampleGuestPreview)
+}
+
+function saveLocalInvites(invites: LocalInvitePreview[]) {
+  writeLocalJson(localInvitesKey, invites)
+}
+
+function getLocalGallery() {
+  return readLocalJson<LocalGalleryPreview[]>(localGalleryKey, [])
+}
+
+function saveLocalGallery(items: LocalGalleryPreview[]) {
+  writeLocalJson(localGalleryKey, items)
 }
 
 function authHeaders(): Record<string, string> {
@@ -111,26 +173,33 @@ export function isBackendConfigured() {
 }
 
 export async function loadSharedInvites() {
-  if (!hasBackend()) return sampleGuestPreview
+  if (!hasBackend()) return getLocalInvites()
   const data = await request<InviteRecord[]>(`${invitesTable}?select=*&order=updated_at.desc`)
   return data.map(toInvitePreview)
 }
 
 export async function saveSharedInvite(input: InviteInput) {
   if (!hasBackend()) {
-    return {
+    const nextInvite = {
       id: input.id ?? crypto.randomUUID(),
       code: input.code,
       name: input.name,
       email: input.email,
       plusOnes: input.plusOnes,
       bringingDish: input.bringingDish ?? '',
+      favoriteThing: '',
       icebreakerAnswer: input.icebreakerAnswer,
       triviaAnswerOne: input.triviaAnswerOne,
       triviaAnswerTwo: input.triviaAnswerTwo,
       notes: input.notes,
       updatedAt: Date.now(),
     }
+
+    const current = getLocalInvites()
+    const filtered = current.filter((item) => item.id !== nextInvite.id)
+    const updated = [nextInvite, ...filtered].sort((left, right) => right.updatedAt - left.updatedAt)
+    saveLocalInvites(updated)
+    return nextInvite
   }
 
   const payload = {
@@ -160,7 +229,7 @@ export async function saveSharedInvite(input: InviteInput) {
 }
 
 export async function loadSharedGallery() {
-  if (!hasBackend()) return []
+  if (!hasBackend()) return getLocalGallery()
   const data = await request<GalleryRecord[]>(`${galleryTable}?select=*&order=created_at.desc`)
   return data.map((item) => ({
     id: item.id,
@@ -172,12 +241,17 @@ export async function loadSharedGallery() {
 
 export async function saveSharedGalleryItem(input: GalleryInput) {
   if (!hasBackend()) {
-    return {
+    const nextItem = {
       id: crypto.randomUUID(),
       src: input.src,
       caption: input.caption,
       createdAt: Date.now(),
     }
+
+    const current = getLocalGallery()
+    const updated = [nextItem, ...current]
+    saveLocalGallery(updated)
+    return nextItem
   }
 
   const payload = {
@@ -206,7 +280,11 @@ export async function saveSharedGalleryItem(input: GalleryInput) {
 
 export async function deleteSharedGalleryItem(id: string) {
   if (!id.trim()) return
-  if (!hasBackend()) return
+  if (!hasBackend()) {
+    const current = getLocalGallery()
+    saveLocalGallery(current.filter((item) => item.id !== id))
+    return
+  }
 
   await request<GalleryRecord[]>(`${galleryTable}?id=eq.${encodeURIComponent(id)}`, {
     method: 'DELETE',
@@ -218,7 +296,7 @@ export async function deleteSharedGalleryItem(id: string) {
 
 export async function findSharedInviteByCode(code: string) {
   if (!hasBackend()) {
-    return sampleGuestPreview.find((invite) => invite.code.toUpperCase() === code.trim().toUpperCase()) || null
+    return getLocalInvites().find((invite) => invite.code.toUpperCase() === code.trim().toUpperCase()) || null
   }
 
   const normalized = code.trim().toUpperCase()
@@ -232,7 +310,7 @@ export async function findSharedInviteByEmail(email: string) {
   if (!normalized) return null
 
   if (!hasBackend()) {
-    return sampleGuestPreview.find((invite) => invite.email.toLowerCase() === normalized) || null
+    return getLocalInvites().find((invite) => invite.email.toLowerCase() === normalized) || null
   }
 
   const data = await request<InviteRecord[]>(`${invitesTable}?select=*&email=eq.${encodeURIComponent(normalized)}&limit=1`)
