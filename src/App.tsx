@@ -3,7 +3,6 @@ import {
   eventInfo,
   giftRules,
   icebreakerPrompts,
-  polaroidCaptionContestPrompts,
   sampleGuestPreview,
   superlativePollPrompts,
   twoTruthsAndFavoritePrompts,
@@ -280,7 +279,6 @@ export default function App() {
   const [triviaIndex, setTriviaIndex] = useState(0)
   const [superlativeIndex, setSuperlativeIndex] = useState(0)
   const [twoTruthsIndex, setTwoTruthsIndex] = useState(0)
-  const [captionContestIndex, setCaptionContestIndex] = useState(0)
   const [photoStyle, setPhotoStyle] = useState<PhotoStyle>('polaroid')
   const [ownedGalleryIds, setOwnedGalleryIds] = useState<string[]>(() => {
     if (typeof window === 'undefined') return []
@@ -747,16 +745,6 @@ export default function App() {
               <div className="camera-actions invite-actions">
                 <button type="button" onClick={() => setTwoTruthsIndex((current) => current + 1)}>
                   Next two truths prompt
-                </button>
-              </div>
-            </article>
-            <article className="game-card">
-              <span className="eyebrow">Polaroid caption contest</span>
-              <h3>{polaroidCaptionContestPrompts[captionContestIndex % polaroidCaptionContestPrompts.length]}</h3>
-              <p className="game-question">Guests pin up their photo with a funny caption. Crowd vote decides the winner.</p>
-              <div className="camera-actions invite-actions">
-                <button type="button" onClick={() => setCaptionContestIndex((current) => current + 1)}>
-                  Next caption prompt
                 </button>
               </div>
             </article>
