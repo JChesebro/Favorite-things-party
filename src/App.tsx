@@ -293,7 +293,6 @@ export default function App() {
       return []
     }
   })
-  const [responseFilter, setResponseFilter] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     if (typeof window === 'undefined') return 'guest'
     const mode = new URLSearchParams(window.location.search).get('view')
@@ -672,7 +671,7 @@ export default function App() {
       bringingDish: '',
       icebreakerAnswer: inviteDraft.icebreakerAnswer.trim(),
       triviaAnswerOne: inviteDraft.triviaAnswerOne.trim(),
-      triviaAnswerTwo: inviteDraft.triviaAnswerTwo.trim(),
+      triviaAnswerTwo: '',
       notes: '',
     })
 
@@ -837,157 +836,9 @@ export default function App() {
           </div>
         </article>
 
-        <article className="card card-icicle icicle-variant-2">
-          <div className="section-header">
-            <h2>RSVP</h2>
-            <span className="muted">Return anytime and load your response with your email.</span>
-          </div>
-          <form className="stack form-grid" onSubmit={handleInviteSubmit}>
-            <div className="split-grid">
-              <label>
-                Name
-                <input
-                  value={inviteDraft.name}
-                  onChange={(event) => handleDraftChange('name', event.target.value)}
-                  type="text"
-                  placeholder="Your name"
-                  required
-                />
-              </label>
-            </div>
-            <div className="split-grid">
-              <label>
-                Email
-                <div className="inline-actions">
-                  <input
-                    value={inviteDraft.email}
-                    onChange={(event) => handleDraftChange('email', event.target.value)}
-                    type="email"
-                    placeholder="you@example.com"
-                  />
-                  <button type="button" onClick={() => loadInviteByEmail(inviteDraft.email)}>
-                    Load mine
-                  </button>
-                </div>
-              </label>
-              <label>
-                Number coming
-                <input
-                  value={inviteDraft.plusOnes}
-                  onChange={(event) => handleDraftChange('plusOnes', Number(event.target.value))}
-                  type="number"
-                  min={0}
-                  max={12}
-                />
-              </label>
-            </div>
-            <div className="form-grid">
-              <label>
-                Icebreaker answer
-                <span className="meta-label">Question: {icebreakerPrompts[icebreakerIndex % icebreakerPrompts.length]}</span>
-                <textarea
-                  value={inviteDraft.icebreakerAnswer}
-                  onChange={(event) => handleDraftChange('icebreakerAnswer', event.target.value)}
-                  rows={3}
-                  placeholder="Answer this icebreaker right here"
-                />
-                <button type="button" className="secondary-button" onClick={() => setIcebreakerIndex((current) => current + 1)}>
-                  New icebreaker question
-                </button>
-              </label>
-              <label>
-                Trivia answer 1
-                <span className="meta-label">Question: {triviaPrompts[triviaIndex % triviaPrompts.length]}</span>
-                <textarea
-                  value={inviteDraft.triviaAnswerOne}
-                  onChange={(event) => handleDraftChange('triviaAnswerOne', event.target.value)}
-                  rows={3}
-                  placeholder="Answer this trivia question here"
-                />
-                <button type="button" className="secondary-button" onClick={() => setTriviaIndex((current) => current + 1)}>
-                  New trivia question
-                </button>
-              </label>
-              <label>
-                Trivia answer 2
-                <span className="meta-label">Question: {triviaPrompts[(triviaIndex + 1) % triviaPrompts.length]}</span>
-                <textarea
-                  value={inviteDraft.triviaAnswerTwo}
-                  onChange={(event) => handleDraftChange('triviaAnswerTwo', event.target.value)}
-                  rows={3}
-                  placeholder="Answer this trivia question here"
-                />
-              </label>
-            </div>
-            <div className="camera-actions invite-actions">
-              <button type="submit">Save invite</button>
-              <button type="button" onClick={resetDraft} className="secondary-button">
-                New invite
-              </button>
-            </div>
-          </form>
-          {inviteMessage ? <p className="status invite-status">{inviteMessage}</p> : null}
-        </article>
-      </section>
-
-      <section className="grid two-up">
-        <article className="card card-icicle icicle-variant-3">
-          <div className="section-header">
-            <h2>Guest Trivia / Icebreaker responses</h2>
-            <label className="mini-filter">
-              Filter responses
-              <input value={responseFilter} onChange={(event) => setResponseFilter(event.target.value)} placeholder="Search answers" />
-            </label>
-          </div>
-          <p className="muted">Each question lists every submitted answer for guests to read.</p>
-          <div className="response-columns">
-            <section className="board-panel">
-              <h3>Question responses</h3>
-              <div className="guest-board responses-by-question">
-                <article className="guest-card">
-                  <span className="meta-label">Icebreaker question</span>
-                  <p className="question-line">{icebreakerPrompts[icebreakerIndex % icebreakerPrompts.length]}</p>
-                  {icebreakerResponses.length ? (
-                    <ul className="answer-list">
-                      {icebreakerResponses.map((answer, index) => <li key={`ice-${index}`}>{answer}</li>)}
-                    </ul>
-                  ) : (
-                    <p>No responses yet.</p>
-                  )}
-                </article>
-                <article className="guest-card">
-                  <span className="meta-label">Trivia question 1</span>
-                  <p className="question-line">{triviaPrompts[triviaIndex % triviaPrompts.length]}</p>
-                  {triviaOneResponses.length ? (
-                    <ul className="answer-list">
-                      {triviaOneResponses.map((answer, index) => <li key={`trivia-one-${index}`}>{answer}</li>)}
-                    </ul>
-                  ) : (
-                    <p>No responses yet.</p>
-                  )}
-                </article>
-                <article className="guest-card">
-                  <span className="meta-label">Trivia question 2</span>
-                  <p className="question-line">{triviaPrompts[(triviaIndex + 1) % triviaPrompts.length]}</p>
-                  {triviaTwoResponses.length ? (
-                    <ul className="answer-list">
-                      {triviaTwoResponses.map((answer, index) => <li key={`trivia-two-${index}`}>{answer}</li>)}
-                    </ul>
-                  ) : (
-                    <p>No responses yet.</p>
-                  )}
-                </article>
-              </div>
-            </section>
-          </div>
-        </article>
-      </section>
-
-      <section>
         <article className="card photo-card card-icicle icicle-variant-5">
           <div className="section-header">
             <h2>Photo booth</h2>
-            <span className="muted">Capture now, connect shared storage later. Captions and voting happen under each shared photo.</span>
           </div>
           <label>
             Photo style
@@ -1140,6 +991,130 @@ export default function App() {
             </div>
           ) : null}
           {galleryMessage ? <p className="status">{galleryMessage}</p> : null}
+        </article>
+      </section>
+
+      <section>
+        <article className="card card-icicle icicle-variant-2">
+          <div className="section-header">
+            <h2>RSVP</h2>
+            <span className="muted">Return anytime and load your response with your email.</span>
+          </div>
+          <form className="stack form-grid" onSubmit={handleInviteSubmit}>
+            <div className="split-grid">
+              <label>
+                Name
+                <input
+                  value={inviteDraft.name}
+                  onChange={(event) => handleDraftChange('name', event.target.value)}
+                  type="text"
+                  placeholder="Your name"
+                  required
+                />
+              </label>
+            </div>
+            <div className="split-grid">
+              <label>
+                Email
+                <div className="inline-actions">
+                  <input
+                    value={inviteDraft.email}
+                    onChange={(event) => handleDraftChange('email', event.target.value)}
+                    type="email"
+                    placeholder="you@example.com"
+                  />
+                  <button type="button" onClick={() => loadInviteByEmail(inviteDraft.email)}>
+                    Load mine
+                  </button>
+                </div>
+              </label>
+              <label>
+                Number coming
+                <input
+                  value={inviteDraft.plusOnes}
+                  onChange={(event) => handleDraftChange('plusOnes', Number(event.target.value))}
+                  type="number"
+                  min={0}
+                  max={12}
+                />
+              </label>
+            </div>
+            <div className="form-grid">
+              <h3 className="form-subhead">Icebreak Questions</h3>
+              <label>
+                Icebreaker Questions
+                <span className="meta-label">Question: {icebreakerPrompts[icebreakerIndex % icebreakerPrompts.length]}</span>
+                <textarea
+                  value={inviteDraft.icebreakerAnswer}
+                  onChange={(event) => handleDraftChange('icebreakerAnswer', event.target.value)}
+                  rows={3}
+                  placeholder="Answer this icebreaker right here"
+                />
+                <button type="button" className="secondary-button" onClick={() => setIcebreakerIndex((current) => current + 1)}>
+                  New icebreaker question
+                </button>
+              </label>
+              <h3 className="form-subhead">Trivia Questions</h3>
+              <label>
+                Trivia Questions
+                <span className="meta-label">Question: {triviaPrompts[triviaIndex % triviaPrompts.length]}</span>
+                <textarea
+                  value={inviteDraft.triviaAnswerOne}
+                  onChange={(event) => handleDraftChange('triviaAnswerOne', event.target.value)}
+                  rows={3}
+                  placeholder="Answer this trivia question here"
+                />
+                <button type="button" className="secondary-button" onClick={() => setTriviaIndex((current) => current + 1)}>
+                  New trivia question
+                </button>
+              </label>
+            </div>
+            <div className="camera-actions invite-actions">
+              <button type="submit">Save invite</button>
+              <button type="button" onClick={resetDraft} className="secondary-button">
+                New invite
+              </button>
+            </div>
+          </form>
+          {inviteMessage ? <p className="status invite-status">{inviteMessage}</p> : null}
+        </article>
+      </section>
+
+      <section className="grid two-up">
+        <article className="card card-icicle icicle-variant-3">
+          <div className="section-header">
+            <h2>Guest Trivia / Icebreaker responses</h2>
+          </div>
+          <p className="muted">Each question lists every submitted answer for guests to read.</p>
+          <div className="response-columns">
+            <section className="board-panel">
+              <h3>Question responses</h3>
+              <div className="guest-board responses-by-question">
+                <article className="guest-card">
+                  <span className="meta-label">Icebreaker question</span>
+                  <p className="question-line">{icebreakerPrompts[icebreakerIndex % icebreakerPrompts.length]}</p>
+                  {icebreakerResponses.length ? (
+                    <ul className="answer-list">
+                      {icebreakerResponses.map((answer, index) => <li key={`ice-${index}`}>{answer}</li>)}
+                    </ul>
+                  ) : (
+                    <p>No responses yet.</p>
+                  )}
+                </article>
+                <article className="guest-card">
+                  <span className="meta-label">Trivia question 1</span>
+                  <p className="question-line">{triviaPrompts[triviaIndex % triviaPrompts.length]}</p>
+                  {triviaOneResponses.length ? (
+                    <ul className="answer-list">
+                      {triviaOneResponses.map((answer, index) => <li key={`trivia-one-${index}`}>{answer}</li>)}
+                    </ul>
+                  ) : (
+                    <p>No responses yet.</p>
+                  )}
+                </article>
+              </div>
+            </section>
+          </div>
         </article>
       </section>
 
